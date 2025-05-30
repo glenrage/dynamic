@@ -1,68 +1,287 @@
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
 body {
   margin: 0;
+  font-family: 'Clear Sans', 'Helvetica Neue', Arial, sans-serif; /* Mimic Mathler font */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #e0e8ed; /* Light background from screenshot */
+  color: #333; /* Darker text for light background */
   display: flex;
-  place-items: center;
-  min-width: 320px;
+  justify-content: center;
+  align-items: flex-start; /* Align to top, allow scrolling */
   min-height: 100vh;
+  padding: 20px;
+  box-sizing: border-box;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
+#root {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 500px; /* Constrain overall width similar to Wordle/Mathler */
+  background-color: #f6f8fa; /* Slightly lighter background for the content area */
   border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  padding: 20px;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+/* App.jsx styles */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0; /* Already handled by #root padding */
+  width: 100%;
+  position: relative; /* For absolute positioning of login button */
+}
+
+.title {
+  font-size: 2.2rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: #212121; /* Darker title */
+  text-align: center;
+}
+
+.puzzle-instruction {
+  font-size: 1.2rem;
+  margin-bottom: 1.5rem;
+  color: #4a4a4a;
+  text-align: center;
+}
+
+.highlight-yellow {
+  background-color: #f7e63b; /* Mathler's specific yellow highlight */
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.login-button-container {
+  position: absolute;
+  top: 10px; /* Adjust as needed for spacing */
+  right: 10px;
+}
+
+.login-button {
+  padding: 8px 15px;
+  background-color: #55a860; /* Green for login */
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  font-size: 0.9rem;
+}
+
+.login-button:hover {
+  background-color: #438f4d;
+}
+
+.connected-button {
+  background-color: #4a90e2; /* Blue for connected */
+}
+
+.connected-button:hover {
+  background-color: #3a7acb;
+}
+
+.message-text {
+  font-size: 1rem;
+  color: #666;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+/* MathlerGame.jsx styles */
+.game-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.target-number-display {
+  font-size: 1.4rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
+  color: #212121;
+  text-align: center;
+}
+
+.highlight-number {
+  color: #4a90e2; /* Blue for the target number */
+}
+
+.game-error-message {
+  color: #d0021b; /* Red */
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+  text-align: center;
+  padding: 5px 10px;
+  background-color: #ffeaea;
+  border-radius: 4px;
+}
+
+.game-over-message {
+  margin-top: 1.5rem;
+  text-align: center;
+}
+
+.game-win-text {
+  color: #55a860; /* Green */
+  font-size: 1.3rem;
+  font-weight: bold;
+  margin-bottom: 0.8rem;
+}
+
+.game-lost-text {
+  color: #d0021b; /* Red */
+  font-size: 1.3rem;
+  font-weight: bold;
+  margin-bottom: 0.8rem;
+}
+
+.play-again-button {
+  padding: 10px 20px;
+  background-color: #4a90e2;
+  color: white;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  border: none;
+}
+
+.play-again-button:hover {
+  background-color: #3a7acb;
+}
+
+/* GameGrid.jsx styles */
+.game-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px; /* Space between rows */
+  margin-bottom: 1.5rem;
+  width: 100%;
+  max-width: fit-content; /* Adjust width to fit tiles */
+}
+
+.game-row {
+  display: flex;
+  gap: 8px; /* Space between tiles */
+  justify-content: center;
+}
+
+/* Tile.jsx styles */
+.tile {
+  width: 50px; /* Adjusted width */
+  height: 50px; /* Adjusted height */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 1.8rem; /* Adjusted font size for larger tiles */
+  border-radius: 4px; /* Slightly less rounded than before */
+  transition: background-color 0.3s ease, border-color 0.3s ease,
+    color 0.3s ease;
+  box-sizing: border-box; /* Include padding and border in the element's total width and height */
+  border: 2px solid #d3d6da; /* Default light border for empty */
+  color: #333; /* Default text color */
+}
+
+.tile-empty {
+  background-color: #ffffff; /* White background for empty */
+  border-color: #d3d6da; /* Light gray border */
+}
+
+.tile-current-typing {
+  background-color: #ffffff; /* White background for active cell */
+  border-color: #888; /* Darker border to indicate active */
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.2); /* Slight shadow for active */
+}
+
+.tile-correct {
+  background-color: #6aaa64; /* Green from Mathler */
+  color: white;
+  border-color: #6aaa64;
+}
+
+.tile-present {
+  background-color: #c9b458; /* Yellow from Mathler */
+  color: white;
+  border-color: #c9b458;
+}
+
+.tile-absent {
+  background-color: #787c7e; /* Grey from Mathler */
+  color: white;
+  border-color: #787c7e;
+}
+
+/* Keyboard.jsx styles */
+.keyboard-container {
+  width: 100%;
+  max-width: 500px; /* Match game grid width */
+  margin-top: 1.5rem;
+}
+
+.keyboard-row {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 6px; /* Smaller gap between rows */
+  gap: 5px; /* Gap between keys */
+}
+
+.key-button {
+  flex: 1;
+  height: 58px; /* Slightly taller keys */
+  background-color: #d3d6da; /* Default light grey for numbers */
+  color: #333; /* Dark text for keys */
+  font-weight: bold;
+  border-radius: 4px;
+  font-size: 1.1rem; /* Smaller font for keys */
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  border: none;
+  min-width: 35px; /* Prevent shrinking too much */
+}
+
+.key-button:hover {
+  background-color: #c0c4c8; /* Slightly darker on hover */
+}
+
+/* Specific key styles */
+.key-action {
+  /* For Enter/Delete */
+  flex: 1.5; /* Wider for action keys */
+  min-width: 70px;
+  background-color: #8c9298; /* Medium grey for action keys */
+  color: white;
+}
+.key-action:hover {
+  background-color: #717578;
+}
+
+.key-operator {
+  background-color: #8c9298; /* Medium grey for operators */
+  color: white;
+}
+.key-operator:hover {
+  background-color: #717578;
+}
+
+/* Keyboard key states based on game feedback */
+.key-correct {
+  background-color: #6aaa64 !important; /* !important to override defaults */
+  color: white !important;
+}
+.key-present {
+  background-color: #c9b458 !important;
+  color: white !important;
+}
+.key-absent {
+  background-color: #787c7e !important;
+  color: white !important;
 }

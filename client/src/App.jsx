@@ -1,34 +1,78 @@
-import { useState } from 'react';
-import reactLogo from './assets/react.svg';
-import viteLogo from '/vite.svg';
-import './App.css';
+import { useDynamicContext } from '@dynamic-labs/sdk-react-core';
+import { GameProvider } from './context/GameContext';
+import { MathlerGame } from './components/MathlerGame';
+import { CryptoDisplay } from './components/CryptoDisplay';
 
 function App() {
-  const [count, setCount] = useState(0);
+  const { primaryWallet, user, setShowAuthFlow } = useDynamicContext();
+  const hasSolvedMathler = user?.metadata?.hasSolvedMathler || false;
 
+  console.log({ user });
   return (
-    <>
-      <div>
-        <a href='https://vite.dev' target='_blank'>
-          <img src={viteLogo} className='logo' alt='Vite logo' />
-        </a>
-        <a href='https://react.dev' target='_blank'>
-          <img src={reactLogo} className='logo react' alt='React logo' />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className='card'>
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
+    <div className='app-container'>
+      <h1 className='title'>Mathler</h1>
+
+      <div className='blurb-section'>
+        <h2>Unlock Your Prefrontal Cortex, Block Impulse Buys!</h2>
         <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
+          Our brains are wired for immediate gratification. The emotional limbic
+          system often overrides the rational prefrontal cortex, leading to
+          impulse decisions – including in crypto!
+        </p>
+        <p>
+          Solving Mathler puzzles rigorously activates your prefrontal cortex,
+          enhancing advanced reasoning and self-control. Train your brain to
+          think logically before acting emotionally.
+        </p>
+        <p>
+          <strong>
+            Complete today's Mathler puzzle to unlock your crypto wallet and
+            make mindful financial decisions!
+          </strong>
         </p>
       </div>
-      <p className='read-the-docs'>
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+
+      <div className='login-button-container'>
+        {primaryWallet ? (
+          <button
+            onClick={() => setShowAuthFlow(true)}
+            className='login-button connected-button'>
+            Connected: {primaryWallet.address.slice(0, 6)}...
+          </button>
+        ) : (
+          <button
+            onClick={() => setShowAuthFlow(true)}
+            className='login-button'>
+            Login / Connect Wallet
+          </button>
+        )}
+      </div>
+
+      {!primaryWallet && (
+        <div className='message-text'>
+          Please login or connect your wallet to play Mathler and unlock crypto
+          features.
+        </div>
+      )}
+
+      {primaryWallet && (
+        <GameProvider>
+          <MathlerGame />
+          {hasSolvedMathler && (
+            <div className='crypto-dashboard-container'>
+              <h2 className='crypto-heading'>Crypto Features Unlocked!</h2>
+              <CryptoDisplay />
+            </div>
+          )}
+        </GameProvider>
+      )}
+
+      <CryptoDisplay />
+
+      <footer className='message-text' style={{ marginTop: '3rem' }}>
+        Built for Dynamic Labs Take Home Assignment
+      </footer>
+    </div>
   );
 }
 
