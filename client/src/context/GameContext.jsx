@@ -1,4 +1,4 @@
-import React, {
+import {
   createContext,
   useContext,
   useState,
@@ -9,21 +9,20 @@ import {
   useUserUpdateRequest,
   useDynamicContext,
 } from '@dynamic-labs/sdk-react-core';
-import {
-  getDailyPuzzle,
-  evaluateExpression,
-  getTileColors,
-} from '../lib/gameLogic';
+import { evaluateExpression } from '../lib/gameLogic';
 
 const GameContext = createContext(undefined);
+const API_BASE_URL = import.meta.env.VITE_BACKEND_API_URL;
 
 export const GameProvider = ({ children }) => {
+  const [currentPuzzleId, setCurrentPuzzleId] = useState(null);
   const [targetNumber, setTargetNumber] = useState(0);
-  const [solution, setSolution] = useState('');
   const [solutionLength, setSolutionLength] = useState(0);
+  const [solutionRevealed, setSolutionRevealed] = useState('');
+
   const [guesses, setGuesses] = useState([]);
   const [currentGuess, setCurrentGuess] = useState('');
-  const [gameStatus, setGameStatus] = useState('playing');
+  const [gameStatus, setGameStatus] = useState('playing'); // 'playing', 'won', 'lost', 'error_fetching'
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [keyboardStates, setKeyboardStates] = useState({});
@@ -33,43 +32,39 @@ export const GameProvider = ({ children }) => {
 
   const MAX_GUESSES = 6;
 
-  const updateGameEventMetadata = useCallback(
-    async (status, currentFullGuesses, gameSolution) => {
+  const persistGameOutcome = useCallback(
+    async (isWin) => {
       if (!updateUser || !user) {
         console.warn(
           'GameContext: updateUser or user not available for metadata update.'
         );
         return;
       }
-
-      const todayDateString = new Date().toISOString().slice(0, 10);
       const currentSdkUserMetadata = user.metadata || {};
-      const solvedKeyForToday = `solved_${todayDateString.replace(/-/g, '')}`;
-      const todayHistoryEntry = {
-        guesses: currentFullGuesses.map((g) => g.guess),
-        status: status,
-        ...((status === 'won' || status === 'lost') && {
-          solution: gameSolution,
-        }),
-      };
+      let newTotalWins = currentSdkUserMetadata.totalWins || 0;
+      let newHasEverSolved =
+        currentSdkUserMetadata.hasEverSolvedAMathler || false;
+      if (isWin) {
+        newTotalWins += 1;
+        newHasEverSolved = true;
+      }
       const metadataPayload = {
         ...currentSdkUserMetadata,
-        [solvedKeyForToday]: status === 'won',
-        mathlerHistory: {
-          ...(currentSdkUserMetadata.mathlerHistory || {}),
-          [todayDateString]: todayHistoryEntry,
-        },
+        hasEverSolvedAMathler: newHasEverSolved,
+        totalWins: newTotalWins,
       };
-
       console.log(
-        `GameContext: Attempting metadata update. Status: ${status}, UserID: ${user.userId}`
+        `GameContext: Attempting to update metadata. Win: ${isWin}, UserID: ${user.userId}`
       );
       console.log('GameContext: Payload for updateUser:', {
         metadata: metadataPayload,
       });
       try {
         const result = await updateUser({ metadata: metadataPayload });
-        console.log('GameContext: Metadata update SUCCESS. Response:', result);
+        console.log(
+          'GameContext: Metadata update API call SUCCESS. Response:',
+          result
+        );
         if (result?.updateUserProfileResponse?.user) {
           console.log(
             'Updated user from API response:',
@@ -82,73 +77,111 @@ export const GameProvider = ({ children }) => {
     },
     [updateUser, user]
   );
+  const clearMathlerMetadataForTesting = useCallback(async () => {
+    if (!updateUser || !user) {
+      console.warn(
+        'GameContext: updateUser or user not available to clear metadata.'
+      );
+      alert(
+        'User not ready to clear metadata. Please ensure you are logged in.'
+      );
+      return;
+    }
 
-  // Effect for game initialization and handling user/wallet changes
-  useEffect(() => {
-    if (primaryWallet && user && updateUser && isLoading) {
-      setError(null);
-      const puzzle = getDailyPuzzle();
+    const currentSdkUserMetadata = user.metadata || {};
 
-      if (
-        !puzzle ||
-        typeof puzzle.solutionLength !== 'number' ||
-        puzzle.solutionLength <= 0
-      ) {
-        setError('Could not load daily puzzle data.');
-        setGameStatus('lost');
-        setSolutionLength(0);
-        setIsLoading(false);
-        return;
+    // Create a new metadata object, explicitly setting game-specific keys to default/cleared values
+    // while preserving any other unrelated metadata.
+    const clearedMetadataPayload = {
+      ...currentSdkUserMetadata,
+      hasEverSolvedAMathler: false,
+      totalWins: 0,
+    };
+
+    console.log('GameContext: Attempting to CLEAR Mathler metadata.');
+    console.log('GameContext: Payload for clearing metadata:', {
+      metadata: clearedMetadataPayload,
+    });
+
+    try {
+      const result = await updateUser({ metadata: clearedMetadataPayload });
+      console.log(
+        'GameContext: Metadata CLEAR API call SUCCESS. Response:',
+        result
+      );
+      alert(
+        'Mathler game metadata (hasEverSolvedAMathler, totalWins) has been reset for testing. You might need to refresh the page or re-login to see UI changes reflect immediately if SDK auto-refresh is delayed.'
+      );
+    } catch (e) {
+      console.error('GameContext: Error clearing Mathler metadata:', e);
+      alert(`Error clearing metadata: ${e.message}`);
+    }
+  }, [updateUser, user]);
+
+  const startNewPuzzle = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    setSolutionRevealed('');
+    try {
+      const response = await fetch(`${API_BASE_URL}/puzzle/new`);
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(
+          `Failed to fetch puzzle: ${response.statusText} - ${
+            errData.message || ''
+          }`
+        );
       }
+      const puzzleData = await response.json();
 
-      setTargetNumber(puzzle.targetNumber);
-      setSolution(puzzle.solution);
-      setSolutionLength(puzzle.solutionLength);
-
-      const today = new Date().toISOString().slice(0, 10);
-      const userTodaysHistory = user.metadata?.mathlerHistory?.[today];
-
-      if (
-        userTodaysHistory &&
-        Array.isArray(userTodaysHistory.guesses) &&
-        userTodaysHistory.status
-      ) {
-        const restoredGuesses = userTodaysHistory.guesses.map((gStr) => {
-          const colors = getTileColors(gStr, puzzle.solution);
-          return {
-            guess: gStr,
-            result: gStr
-              .split('')
-              .map((char, index) => ({ value: char, state: colors[index] })),
-          };
-        });
-        setGuesses(restoredGuesses);
-        setGameStatus(userTodaysHistory.status);
-      } else {
-        setGuesses([]);
-        setGameStatus('playing');
-      }
+      setCurrentPuzzleId(puzzleData.puzzleId);
+      setTargetNumber(puzzleData.targetNumber);
+      setSolutionLength(puzzleData.solutionLength);
+      setGuesses([]);
       setCurrentGuess('');
+      setGameStatus('playing');
       setKeyboardStates({});
-
-      // Initialization complete
+    } catch (fetchError) {
+      console.error('Error fetching new puzzle:', fetchError);
+      setError(`Could not load new puzzle: ${fetchError.message}`);
+      setGameStatus('error_fetching');
+    } finally {
       setIsLoading(false);
-    } else if (!primaryWallet || !user || !updateUser) {
-      // If Dynamic SDK essentials are not ready (e.g., logged out, or initial SDK load)
-      // Reset to a loading/default state.
+    }
+  }, []);
+
+  useEffect(() => {
+    if (primaryWallet && user && updateUser) {
+      if (isLoading && !currentPuzzleId) {
+        startNewPuzzle();
+      } else if (
+        !isLoading &&
+        !currentPuzzleId &&
+        gameStatus !== 'error_fetching'
+      ) {
+        startNewPuzzle();
+      }
+    } else {
       setIsLoading(true);
+      setCurrentPuzzleId(null);
       setGuesses([]);
       setCurrentGuess('');
       setGameStatus('playing');
       setTargetNumber(0);
-      setSolution('');
       setSolutionLength(0);
       setKeyboardStates({});
       setError(null);
     }
-  }, [primaryWallet, user, updateUser, isLoading]);
+  }, [
+    primaryWallet,
+    user,
+    updateUser,
+    isLoading,
+    currentPuzzleId,
+    startNewPuzzle,
+    gameStatus,
+  ]);
 
-  // Effect to update keyboard states based on past guesses
   useEffect(() => {
     const newKeyboardStates = {};
     guesses.forEach((guessResult) => {
@@ -174,7 +207,7 @@ export const GameProvider = ({ children }) => {
       if (
         isLoading ||
         gameStatus !== 'playing' ||
-        !solution ||
+        !currentPuzzleId ||
         solutionLength === 0
       )
         return;
@@ -187,40 +220,90 @@ export const GameProvider = ({ children }) => {
           );
           return;
         }
-        const evaluatedGuess = evaluateExpression(submittedGuess);
-        if (evaluatedGuess === null || evaluatedGuess !== targetNumber) {
-          setError(`Expression does not equal ${targetNumber} or is invalid.`);
+
+        const localEval = evaluateExpression(submittedGuess);
+        if (localEval === null) {
+          setError(`Invalid mathematical expression format.`);
           return;
         }
+
         setError(null);
 
-        const tileColors = getTileColors(submittedGuess, solution);
-        const newGuessResult = {
-          guess: submittedGuess,
-          result: submittedGuess.split('').map((char, index) => ({
-            value: char,
-            state: tileColors[index],
-          })),
-        };
+        setIsLoading(true);
+        try {
+          const response = await fetch(`${API_BASE_URL}/puzzle/submit-guess`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              puzzleId: currentPuzzleId,
+              guessString: submittedGuess,
+            }),
+          });
 
-        const updatedGuesses = [...guesses, newGuessResult];
-        setGuesses(updatedGuesses);
-        setCurrentGuess('');
+          const serverResult = await response.json();
 
-        const isCorrect = tileColors.every((state) => state === 'correct');
-        let finalGameStatus = 'playing';
-        if (isCorrect) {
-          finalGameStatus = 'won';
-        } else if (updatedGuesses.length >= MAX_GUESSES) {
-          finalGameStatus = 'lost';
+          if (!response.ok) {
+            throw new Error(
+              serverResult.message || `Server error: ${response.statusText}`
+            );
+          }
+
+          // serverResult: { guess, matchesTarget, evaluatedValue, tileColors, gameStatus, solution?, error? }
+          if (serverResult.error && serverResult.gameStatus === 'playing') {
+            // Non-critical error from server (e.g. wrong value)
+            setError(serverResult.error);
+          } else {
+            setError(null);
+          }
+
+          const newGuessResult = {
+            guess: submittedGuess,
+            result: serverResult.tileColors.map((state, index) => ({
+              value: submittedGuess[index],
+              state: state,
+            })),
+          };
+
+          const updatedGuesses = [...guesses, newGuessResult];
+          setGuesses(updatedGuesses);
+          setCurrentGuess('');
+          setGameStatus(serverResult.gameStatus);
+
+          if (serverResult.solution) {
+            // If server sent back solution (on win/loss)
+            setSolutionRevealed(serverResult.solution);
+          }
+
+          if (
+            serverResult.gameStatus === 'won' ||
+            serverResult.gameStatus === 'lost' ||
+            (serverResult.gameStatus === 'playing' &&
+              updatedGuesses.length >= MAX_GUESSES)
+          ) {
+            let finalStatus = serverResult.gameStatus;
+            if (
+              serverResult.gameStatus === 'playing' &&
+              updatedGuesses.length >= MAX_GUESSES
+            ) {
+              finalStatus = 'lost';
+              setGameStatus('lost'); // Update local status
+              // Fetch solution if lost and server didn't send it (or re-request with a 'reveal' flag)
+              // For now, assume server sends solution if it sets status to lost/won.
+              // If serverResult.solution is not available for 'lost', you might need another call or logic.
+              if (!serverResult.solution) {
+                // This part is tricky. If server doesn't send solution on max guesses loss,
+                // you might need to make another call or the client just knows it's lost.
+                // For now, assume `solutionRevealed` is set if `serverResult.solution` was present.
+              }
+            }
+            await persistGameOutcome(finalStatus === 'won');
+          }
+        } catch (submitError) {
+          console.error('Error submitting guess:', submitError);
+          setError(`Failed to submit guess: ${submitError.message}`);
+        } finally {
+          setIsLoading(false);
         }
-        setGameStatus(finalGameStatus);
-
-        await updateGameEventMetadata(
-          finalGameStatus,
-          updatedGuesses,
-          solution
-        );
       } else if (key === 'BACKSPACE') {
         setCurrentGuess((prev) => prev.slice(0, -1));
         setError(null);
@@ -237,14 +320,15 @@ export const GameProvider = ({ children }) => {
       currentGuess,
       gameStatus,
       isLoading,
-      solution,
+      currentPuzzleId,
       solutionLength,
-      targetNumber,
-      updateGameEventMetadata,
+      persistGameOutcome,
       setError,
       setGuesses,
       setCurrentGuess,
       setGameStatus,
+      setIsLoading,
+      setSolutionRevealed,
     ]
   );
 
@@ -252,41 +336,68 @@ export const GameProvider = ({ children }) => {
     if (
       isLoading ||
       gameStatus !== 'playing' ||
-      !solution ||
+      !currentPuzzleId ||
       solutionLength === 0
     )
       return;
-
     setError(null);
-    const solvedGuessResult = {
-      guess: solution,
-      result: solution
-        .split('')
-        .map((char) => ({ value: char, state: 'correct' })),
-    };
-    const updatedGuesses = [...guesses, solvedGuessResult];
+    setIsLoading(true);
+    try {
+      // To truly bypass with server validation, we'd need an endpoint that accepts a bypass command
+      // or we fetch the solution first, then submit it.
+      // For simplicity, let's assume the bypass button on client directly calls persistGameOutcome
+      // and sets local state to 'won'. Client reveals a known solution if needed.
+      // This is less secure but simpler than adding a server bypass endpoint for this example.
 
-    setGuesses(updatedGuesses);
-    setGameStatus('won');
-    setCurrentGuess('');
+      // Fetch the solution from an endpoint IF NEEDED FOR DISPLAY.
+      // For now, let's just simulate the win and persist.
+      // The server *should* have the solution if we were to query by puzzleId.
+      // For demo, we can just make up the display if needed locally or fetch separately.
+      // This `solutionRevealed` would ideally come from server upon win.
+      // Since this is a client-side "bypass", we don't have the server's solution string easily
+      // unless we made another call or the initial /puzzle/new sent it (which we stopped).
 
-    await updateGameEventMetadata('won', updatedGuesses, solution);
+      // Let's assume the bypass implies we know the solution or don't need to display it via this path.
+      // Or, for a true bypass that interacts with server:
+      // 1. Fetch solution for currentPuzzleId (new endpoint needed: GET /api/puzzle/:puzzleId/solution)
+      // 2. Then call POST /api/puzzle/submit-guess with that solution.
+
+      // Simpler client-side bypass for now:
+      setGameStatus('won');
+      setCurrentGuess('');
+      // We don't have the solution string locally anymore.
+      // So, the MathlerGame component will need to handle displaying a generic win
+      // or fetch the solution if it needs to show it.
+      // For now, just mark as won.
+      const dummySolvedGuess = {
+        guess: 'BYPASS', // Placeholder
+        result: Array(solutionLength).fill({ value: '✓', state: 'correct' }),
+      };
+      setGuesses([dummySolvedGuess]);
+
+      await persistGameOutcome(true);
+    } catch (e) {
+      setError('Bypass failed.');
+    } finally {
+      setIsLoading(false);
+    }
   }, [
     gameStatus,
     isLoading,
-    solution,
+    currentPuzzleId,
     solutionLength,
-    guesses,
-    updateGameEventMetadata,
+    persistGameOutcome,
     setError,
-    setGuesses,
     setGameStatus,
     setCurrentGuess,
+    setGuesses,
+    setIsLoading,
   ]);
 
   const resetGame = useCallback(() => {
+    setCurrentPuzzleId(null);
     setIsLoading(true);
-  }, [setIsLoading]);
+  }, [setCurrentPuzzleId, setIsLoading]);
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -316,9 +427,10 @@ export const GameProvider = ({ children }) => {
         error,
         resetGame,
         solutionLength,
-        solution,
+        solution: solutionRevealed, // Provide the revealed solution for UI
         keyboardStates,
         bypassPuzzle,
+        clearMathlerMetadataForTesting,
       }}>
       {children}
     </GameContext.Provider>
@@ -327,8 +439,7 @@ export const GameProvider = ({ children }) => {
 
 export const useGame = () => {
   const context = useContext(GameContext);
-  if (context === undefined) {
+  if (context === undefined)
     throw new Error('useGame must be used within a GameProvider');
-  }
   return context;
 };

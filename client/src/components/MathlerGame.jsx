@@ -16,6 +16,7 @@ export const MathlerGame = () => {
     solution,
     keyboardStates,
     bypassPuzzle,
+    clearMathlerMetadataForTesting,
   } = useGame();
 
   const MAX_GUESSES = 6;
@@ -111,8 +112,7 @@ export const MathlerGame = () => {
         <button
           onClick={bypassPuzzle}
           className='lizard-brain-button'
-          disabled={isBypassButtonDisabled || solutionLength === 0} // Also disable if no puzzle loaded
-        >
+          disabled={isBypassButtonDisabled || solutionLength === 0}>
           {gameStatus === 'playing' && solutionLength > 0
             ? 'Lizard Brain Takeover! (Bypass Puzzle)'
             : 'Puzzle Not Ready / Completed'}
@@ -124,7 +124,6 @@ export const MathlerGame = () => {
         )}
       </div>
 
-      {/* Only render GameGrid if solutionLength is set and game is not in a definitive error state shown above */}
       {solutionLength > 0 && <GameGrid rows={renderGridRows()} />}
       {solutionLength === 0 && gameStatus === 'playing' && (
         <div className='message-text'>
@@ -136,7 +135,7 @@ export const MathlerGame = () => {
         <div className='game-over-message'>
           {gameStatus === 'won' ? (
             <p className='game-win-text'>
-              Congratulations! You solved it! <br /> Crypto Features Unlocked!
+              Congratulations! You solved it! <br />
             </p>
           ) : (
             <p className='game-lost-text'>
@@ -147,7 +146,13 @@ export const MathlerGame = () => {
             </p>
           )}
           <button onClick={resetGame} className='play-again-button'>
-            Play Today's Puzzle Again
+            Play Puzzle Again
+          </button>
+
+          <button
+            onClick={clearMathlerMetadataForTesting}
+            className='play-again-button'>
+            Reset User history
           </button>
         </div>
       )}

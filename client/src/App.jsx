@@ -1,28 +1,37 @@
 import { useDynamicContext } from '@dynamic-labs/sdk-react-core';
 import { GameProvider } from './context/GameContext';
 import { MathlerGame } from './components/MathlerGame';
-import { CryptoDisplay } from './components/CryptoDisplay';
+import { DynamicWidget } from '@dynamic-labs/sdk-react-core';
 
 function App() {
   const { primaryWallet, user, setShowAuthFlow } = useDynamicContext();
-  const hasSolvedMathler = user?.metadata?.hasSolvedMathler || false;
+  const hasSolvedMathler = user?.metadata?.hasEverSolvedAMathler || false;
 
   console.log({ user });
+
+  const handleWalletButtonClick = () => {
+    if (hasSolvedMathler) {
+      setShowAuthFlow(true);
+    }
+  };
+
   return (
     <div className='app-container'>
       <h1 className='title'>Mathler</h1>
 
       <div className='blurb-section'>
-        <h2>Unlock Your Prefrontal Cortex, Block Impulse Buys!</h2>
+        <h2>Unlock Your Prefrontal Cortex, Block Impulse Buys and scams!</h2>
         <p>
           Our brains are wired for immediate gratification. The emotional limbic
           system often overrides the rational prefrontal cortex, leading to
-          impulse decisions – including in crypto!
+          impulse decisions, including in crypto!
         </p>
         <p>
           Solving Mathler puzzles rigorously activates your prefrontal cortex,
           enhancing advanced reasoning and self-control. Train your brain to
-          think logically before acting emotionally.
+          think logically before acting emotionally. That unknown text message
+          asking you to invest in her crypto platform with guaranteed 30% daily
+          returns? Probably a scam.
         </p>
         <p>
           <strong>
@@ -35,7 +44,7 @@ function App() {
       <div className='login-button-container'>
         {primaryWallet ? (
           <button
-            onClick={() => setShowAuthFlow(true)}
+            onClick={handleWalletButtonClick}
             className='login-button connected-button'>
             Connected: {primaryWallet.address.slice(0, 6)}...
           </button>
@@ -60,18 +69,12 @@ function App() {
           <MathlerGame />
           {hasSolvedMathler && (
             <div className='crypto-dashboard-container'>
-              <h2 className='crypto-heading'>Crypto Features Unlocked!</h2>
-              <CryptoDisplay />
+              <h2 className='crypto-heading'>Wallet Unlocked!</h2>
+              <DynamicWidget />
             </div>
           )}
         </GameProvider>
       )}
-
-      <CryptoDisplay />
-
-      <footer className='message-text' style={{ marginTop: '3rem' }}>
-        Built for Dynamic Labs Take Home Assignment
-      </footer>
     </div>
   );
 }
