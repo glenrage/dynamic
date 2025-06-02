@@ -2,6 +2,7 @@ import { useDynamicContext } from '@dynamic-labs/sdk-react-core';
 import { GameProvider } from './context/GameContext';
 import { MathlerGame } from './components/MathlerGame';
 import { DynamicWidget } from '@dynamic-labs/sdk-react-core';
+import { RealTimeBtcPrice } from './components/RealTimeBtcPrice';
 
 function App() {
   const { primaryWallet, user, setShowAuthFlow } = useDynamicContext();
@@ -71,6 +72,7 @@ function App() {
             <div className='crypto-dashboard-container'>
               <h2 className='crypto-heading'>Wallet Unlocked!</h2>
               <DynamicWidget />
+              <RealTimeBtcPrice />
             </div>
           )}
         </GameProvider>

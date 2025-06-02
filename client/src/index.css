@@ -1,13 +1,14 @@
+/* === GLOBAL STYLES === */
 body {
   margin: 0;
-  font-family: 'Clear Sans', 'Helvetica Neue', Arial, sans-serif; /* Mimic Mathler font */
+  font-family: 'Clear Sans', 'Helvetica Neue', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #e0e8ed; /* Light background from screenshot */
-  color: #333; /* Darker text for light background */
+  background-color: #e0e8ed;
+  color: #333;
   display: flex;
   justify-content: center;
-  align-items: flex-start; /* Align to top, allow scrolling */
+  align-items: flex-start;
   min-height: 100vh;
   padding: 20px;
   box-sizing: border-box;
@@ -18,263 +19,342 @@ body {
   flex-direction: column;
   align-items: center;
   width: 100%;
-  max-width: 500px; /* Constrain overall width similar to Wordle/Mathler */
-  background-color: #f6f8fa; /* Slightly lighter background for the content area */
-  border-radius: 8px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-  padding: 20px;
+  max-width: 500px;
+  background-color: #f6f8fa;
+  border-radius: 10px;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+  padding: 25px;
 }
 
-/* App.jsx styles */
+/* === APP.JSX STYLES === */
 .app-container {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 0; /* Already handled by #root padding */
   width: 100%;
-  position: relative; /* For absolute positioning of login button */
+  position: relative;
 }
 
 .title {
-  font-size: 2.2rem;
+  font-size: 2.5rem;
   font-weight: 700;
-  margin-bottom: 1rem;
-  color: #212121; /* Darker title */
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+  color: #1a1a1a;
   text-align: center;
+  letter-spacing: 0.05em;
 }
 
-.puzzle-instruction {
-  font-size: 1.2rem;
-  margin-bottom: 1.5rem;
+.blurb-section {
+  background-color: #ffffff;
+  padding: 20px;
+  margin: 20px 0;
+  border-radius: 8px;
+  border: 1px solid #e1e4e8;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  text-align: left;
+}
+
+.blurb-section h2 {
+  color: #0366d6;
+  margin-top: 0;
+  font-size: 1.4em;
+  margin-bottom: 10px;
+}
+
+.blurb-section p {
+  font-size: 0.95em;
+  line-height: 1.6;
   color: #4a4a4a;
-  text-align: center;
+  margin-bottom: 8px;
 }
 
-.highlight-yellow {
-  background-color: #f7e63b; /* Mathler's specific yellow highlight */
-  padding: 2px 6px;
-  border-radius: 4px;
+.blurb-section strong {
+  color: #0366d6;
+  font-weight: 600;
 }
 
 .login-button-container {
   position: absolute;
-  top: 10px; /* Adjust as needed for spacing */
-  right: 10px;
+  top: 15px;
+  right: 15px;
 }
 
 .login-button {
-  padding: 8px 15px;
-  background-color: #55a860; /* Green for login */
+  padding: 10px 18px;
+  background-color: #0366d6;
   color: white;
   border: none;
   border-radius: 6px;
   font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
   font-size: 0.9rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .login-button:hover {
-  background-color: #438f4d;
+  background-color: #0056b3;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .connected-button {
-  background-color: #4a90e2; /* Blue for connected */
+  background-color: #28a745;
 }
 
 .connected-button:hover {
-  background-color: #3a7acb;
+  background-color: #218838;
 }
 
 .message-text {
   font-size: 1rem;
-  color: #666;
-  margin-bottom: 1.5rem;
+  color: #586069;
+  margin: 1.5rem 0;
   text-align: center;
 }
 
-/* MathlerGame.jsx styles */
+/* === MATHLERGAME.JSX STYLES === */
 .game-container {
   display: flex;
   flex-direction: column;
   align-items: center;
   width: 100%;
+  margin-top: 1rem;
 }
 
 .target-number-display {
-  font-size: 1.4rem;
-  font-weight: bold;
-  margin-bottom: 1rem;
-  color: #212121;
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  color: #1a1a1a;
   text-align: center;
 }
 
 .highlight-number {
-  color: #4a90e2; /* Blue for the target number */
-}
-
-.game-error-message {
-  color: #d0021b; /* Red */
-  font-size: 0.9rem;
-  margin-bottom: 1rem;
-  text-align: center;
-  padding: 5px 10px;
-  background-color: #ffeaea;
+  color: #0366d6;
+  padding: 3px 8px;
+  background-color: #e6f0ff;
   border-radius: 4px;
 }
 
-.game-over-message {
-  margin-top: 1.5rem;
+.game-error-message {
+  color: #cb2431;
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-bottom: 1rem;
+  text-align: center;
+  padding: 8px 12px;
+  background-color: #ffeef0;
+  border: 1px solid #d73a49;
+  border-radius: 6px;
+  width: fit-content;
+  max-width: 90%;
+}
+
+.lizard-brain-section {
+  margin: 1rem 0 1.5rem 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.lizard-brain-button {
+  background-color: #e63946;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+  text-transform: uppercase;
+}
+
+.lizard-brain-button:hover:not(:disabled) {
+  background-color: #c72f3e;
+  transform: translateY(-1px);
+}
+.lizard-brain-button:disabled {
+  background-color: #a0a0a0;
+  cursor: not-allowed;
+}
+
+.lizard-brain-message {
+  font-size: 0.85em;
+  color: #e63946;
+  font-style: italic;
   text-align: center;
 }
 
+.game-over-message {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background-color: #ffffff;
+  border: 1px solid #e1e4e8;
+  border-radius: 8px;
+  text-align: center;
+  width: 100%;
+  max-width: 350px;
+}
+
 .game-win-text {
-  color: #55a860; /* Green */
-  font-size: 1.3rem;
+  color: #28a745;
+  font-size: 1.4rem;
   font-weight: bold;
-  margin-bottom: 0.8rem;
+  margin-bottom: 1rem;
 }
 
 .game-lost-text {
-  color: #d0021b; /* Red */
-  font-size: 1.3rem;
+  color: #cb2431;
+  font-size: 1.4rem;
   font-weight: bold;
-  margin-bottom: 0.8rem;
+  margin-bottom: 1rem;
 }
 
 .play-again-button {
-  padding: 10px 20px;
-  background-color: #4a90e2;
+  padding: 12px 25px;
+  background-color: #0366d6;
   color: white;
   border-radius: 6px;
   font-weight: 600;
   font-size: 1rem;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
   border: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .play-again-button:hover {
-  background-color: #3a7acb;
+  background-color: #0056b3;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
-/* GameGrid.jsx styles */
+/* === GAMEGRID.JSX & TILE.JSX STYLES === */
 .game-grid {
   display: flex;
   flex-direction: column;
-  gap: 8px; /* Space between rows */
-  margin-bottom: 1.5rem;
-  width: 100%;
-  max-width: fit-content; /* Adjust width to fit tiles */
+  gap: 6px;
+  margin-bottom: 2rem;
 }
 
 .game-row {
   display: flex;
-  gap: 8px; /* Space between tiles */
+  gap: 6px;
   justify-content: center;
 }
 
-/* Tile.jsx styles */
 .tile {
-  width: 50px; /* Adjusted width */
-  height: 50px; /* Adjusted height */
+  width: 55px;
+  height: 55px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: bold;
-  font-size: 1.8rem; /* Adjusted font size for larger tiles */
-  border-radius: 4px; /* Slightly less rounded than before */
-  transition: background-color 0.3s ease, border-color 0.3s ease,
-    color 0.3s ease;
-  box-sizing: border-box; /* Include padding and border in the element's total width and height */
-  border: 2px solid #d3d6da; /* Default light border for empty */
-  color: #333; /* Default text color */
+  font-weight: 700;
+  font-size: 2rem;
+  border-radius: 5px;
+  transition: transform 0.1s ease-in-out, background-color 0.3s ease,
+    border-color 0.3s ease, color 0.3s ease;
+  box-sizing: border-box;
+  border: 2px solid #d3d6da;
+  color: #1a1a1a;
+  user-select: none;
 }
 
 .tile-empty {
-  background-color: #ffffff; /* White background for empty */
-  border-color: #d3d6da; /* Light gray border */
+  background-color: #ffffff;
+  border-color: #d3d6da;
 }
 
 .tile-current-typing {
-  background-color: #ffffff; /* White background for active cell */
-  border-color: #888; /* Darker border to indicate active */
-  box-shadow: 0 0 5px rgba(0, 0, 0, 0.2); /* Slight shadow for active */
+  background-color: #ffffff;
+  border-color: #a7adc1;
 }
 
 .tile-correct {
-  background-color: #6aaa64; /* Green from Mathler */
+  background-color: #6aaa64;
   color: white;
   border-color: #6aaa64;
 }
 
 .tile-present {
-  background-color: #c9b458; /* Yellow from Mathler */
+  background-color: #c9b458;
   color: white;
   border-color: #c9b458;
 }
 
 .tile-absent {
-  background-color: #787c7e; /* Grey from Mathler */
+  background-color: #787c7e;
   color: white;
   border-color: #787c7e;
 }
 
-/* Keyboard.jsx styles */
+/* === KEYBOARD.JSX STYLES === */
 .keyboard-container {
   width: 100%;
-  max-width: 500px; /* Match game grid width */
-  margin-top: 1.5rem;
+  max-width: 480px;
+  margin-top: 1rem;
 }
 
 .keyboard-row {
   display: flex;
   justify-content: center;
-  margin-bottom: 6px; /* Smaller gap between rows */
-  gap: 5px; /* Gap between keys */
+  margin-bottom: 8px;
+  gap: 6px;
 }
 
 .key-button {
   flex: 1;
-  height: 58px; /* Slightly taller keys */
-  background-color: #d3d6da; /* Default light grey for numbers */
-  color: #333; /* Dark text for keys */
+  height: 50px;
+  background-color: #d3d6da;
+  color: #1a1a1a;
   font-weight: bold;
-  border-radius: 4px;
-  font-size: 1.1rem; /* Smaller font for keys */
+  border-radius: 5px;
+  font-size: 1rem;
   cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: background-color 0.1s ease;
   border: none;
-  min-width: 35px; /* Prevent shrinking too much */
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
 }
 
-.key-button:hover {
-  background-color: #c0c4c8; /* Slightly darker on hover */
+.key-button:hover:not(:disabled) {
+  background-color: #b0b4b8;
+}
+.key-button:active:not(:disabled) {
+  background-color: #9a9ea2;
 }
 
-/* Specific key styles */
 .key-action {
-  /* For Enter/Delete */
-  flex: 1.5; /* Wider for action keys */
-  min-width: 70px;
-  background-color: #8c9298; /* Medium grey for action keys */
+  flex-grow: 1.5;
+  background-color: #a7adc1;
   color: white;
+  font-size: 0.9rem;
 }
-.key-action:hover {
-  background-color: #717578;
+.key-action:hover:not(:disabled) {
+  background-color: #878c96;
+}
+.key-action:active:not(:disabled) {
+  background-color: #70747a;
 }
 
 .key-operator {
-  background-color: #8c9298; /* Medium grey for operators */
+  background-color: #a7adc1;
   color: white;
 }
-.key-operator:hover {
-  background-color: #717578;
+.key-operator:hover:not(:disabled) {
+  background-color: #878c96;
+}
+.key-operator:active:not(:disabled) {
+  background-color: #70747a;
 }
 
-/* Keyboard key states based on game feedback */
 .key-correct {
-  background-color: #6aaa64 !important; /* !important to override defaults */
+  background-color: #6aaa64 !important;
   color: white !important;
 }
 .key-present {
@@ -284,4 +364,34 @@ body {
 .key-absent {
   background-color: #787c7e !important;
   color: white !important;
+}
+
+.btc-price-container {
+  margin-top: 1rem;
+  padding: 15px;
+  background-color: #f6f8fa;
+  border: 1px solid #e1e4e8;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.btc-price-container h4 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  color: #0366d6;
+  font-size: 1.1em;
+}
+
+.btc-price-container p {
+  margin: 0.25rem 0;
+}
+
+.btc-price-container p[style*='font-size: 1.5em'] {
+  color: #1a1a1a;
+  font-weight: 700;
+}
+
+.btc-price-container p[style*='font-style: italic'] {
+  color: #586069;
+  font-size: 0.9em;
 }

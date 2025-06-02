@@ -3,9 +3,9 @@ const math = require('mathjs');
 
 const FIXED_SOLUTION_LENGTH = 6;
 
-// We'll keep these in memory for this example. In a real app, this could be a database.
-const ACTIVE_PUZZLES = {}; // Stores current puzzle instance for a user/session if needed, or just latest served
+const ACTIVE_PUZZLES = {};
 
+// for demo purposes sample puzzles are in memory, should be stored in a db
 const SAMPLE_PUZZLES_DATA = [
   { internalId: 'p1', targetNumber: 12, solution: '18-3*2' },
   { internalId: 'p2', targetNumber: 25, solution: '10*2+5' },
@@ -58,14 +58,13 @@ const serveNewPuzzle = () => {
     SAMPLE_PUZZLES_DATA[SAMPLES_PUZZLE_INDEX % SAMPLE_PUZZLES_DATA.length];
   SAMPLES_PUZZLE_INDEX++;
 
-  const puzzleId = uuidv4(); // Unique ID for this served instance of the puzzle
+  const puzzleId = uuidv4();
 
-  // Store the solution associated with this puzzleId temporarily (in-memory for demo)
-  // In a real app, you might use a session or a short-lived cache/DB record.
   ACTIVE_PUZZLES[puzzleId] = {
     solution: puzzleBase.solution,
     targetNumber: puzzleBase.targetNumber,
   };
+
   // Clean up old puzzles after a while to prevent memory leaks
   setTimeout(() => delete ACTIVE_PUZZLES[puzzleId], 10 * 60 * 1000);
 

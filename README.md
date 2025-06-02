@@ -1,5 +1,7 @@
 # Mathler Game - Dynamic Take-Home Assignment
 
+https://dynamic-iki7-qk957idqh-phamgalangs-projects.vercel.app/
+
 This project is a frontend take-home assignment to build "Mathler," a game similar to Wordle but with mathematical equations. The user has 6 guesses to find the hidden equation that equals a target number.
 
 ## Core Features Implemented

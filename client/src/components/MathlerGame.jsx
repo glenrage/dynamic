@@ -1,6 +1,7 @@
 import { useGame } from '../context/GameContext';
 import { GameGrid } from './GameGrid';
 import { Keyboard } from './Keyboard';
+import { GAME_STATUSES } from '../constants/gameStatus';
 
 export const MathlerGame = () => {
   const {
@@ -23,7 +24,7 @@ export const MathlerGame = () => {
 
   const renderGridRows = () => {
     // If solutionLength is 0, this will create empty rows array or rows with 0 tiles
-    if (solutionLength === 0 && gameStatus === 'playing') {
+    if (solutionLength === 0 && gameStatus === GAME_STATUSES.PLAYING) {
       console.warn(
         'MathlerGame: renderGridRows called with solutionLength 0. Grid might be empty.'
       );
@@ -34,7 +35,7 @@ export const MathlerGame = () => {
       rows.push(guessResult.result);
     });
 
-    if (gameStatus === 'playing' && rows.length < MAX_GUESSES) {
+    if (gameStatus === GAME_STATUSES.PLAYING && rows.length < MAX_GUESSES) {
       const currentTypingTiles = [];
       const typedChars = currentGuess.split('');
       // Loop up to solutionLength. If solutionLength is 0, this loop doesn't run.
@@ -74,7 +75,7 @@ export const MathlerGame = () => {
 
   // Second gate: If not loading, but solutionLength is still 0 (e.g. error in init)
   // and game is supposed to be playing
-  if (solutionLength === 0 && gameStatus === 'playing' && !error) {
+  if (solutionLength === 0 && gameStatus === GAME_STATUSES.PLAYING && !error) {
     // This case indicates something went wrong in initialization that didn't set an error
     // but also didn't set solutionLength.
     return (
@@ -85,7 +86,7 @@ export const MathlerGame = () => {
   }
 
   // If there's an error message from GameContext and it's not related to game over.
-  if (error && gameStatus === 'playing') {
+  if (error && gameStatus === GAME_STATUSES.PLAYING) {
     return (
       <div className='game-container'>
         <h2 className='target-number-display'>Mathler Game</h2>
@@ -97,7 +98,7 @@ export const MathlerGame = () => {
     );
   }
 
-  const isBypassButtonDisabled = gameStatus !== 'playing';
+  const isBypassButtonDisabled = gameStatus !== GAME_STATUSES.PLAYING;
 
   return (
     <div className='game-container'>
@@ -113,11 +114,11 @@ export const MathlerGame = () => {
           onClick={bypassPuzzle}
           className='lizard-brain-button'
           disabled={isBypassButtonDisabled || solutionLength === 0}>
-          {gameStatus === 'playing' && solutionLength > 0
+          {gameStatus === GAME_STATUSES.PLAYING && solutionLength > 0
             ? 'Lizard Brain Takeover! (Bypass Puzzle)'
             : 'Puzzle Not Ready / Completed'}
         </button>
-        {gameStatus === 'playing' && solutionLength > 0 && (
+        {gameStatus === GAME_STATUSES.PLAYING && solutionLength > 0 && (
           <p className='lizard-brain-message'>
             Can't resist? My impulses demand crypto access now!
           </p>
@@ -125,15 +126,15 @@ export const MathlerGame = () => {
       </div>
 
       {solutionLength > 0 && <GameGrid rows={renderGridRows()} />}
-      {solutionLength === 0 && gameStatus === 'playing' && (
+      {solutionLength === 0 && gameStatus === GAME_STATUSES.PLAYING && (
         <div className='message-text'>
           Waiting for puzzle data to draw grid...
         </div>
       )}
 
-      {gameStatus !== 'playing' && (
+      {gameStatus !== GAME_STATUSES.PLAYING && (
         <div className='game-over-message'>
-          {gameStatus === 'won' ? (
+          {gameStatus === GAME_STATUSES.WON ? (
             <p className='game-win-text'>
               Congratulations! You solved it! <br />
             </p>
