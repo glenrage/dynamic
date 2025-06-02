@@ -14,6 +14,10 @@ app.use(cors({ origin: CLIENT_ORIGIN }));
 app.use(express.json());
 
 // --- API Endpoints ---
+app.get('/api/', (req, res) => {
+  res.json('hi');
+});
+
 app.get('/api/puzzle/new', (req, res) => {
   try {
     const puzzleData = serveNewPuzzle();
