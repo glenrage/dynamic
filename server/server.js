@@ -14,7 +14,7 @@ app.use(cors({ origin: CLIENT_ORIGIN }));
 app.use(express.json());
 
 // --- API Endpoints ---
-app.get('/api/', (req, res) => {
+app.get('/', (req, res) => {
   res.json('hi');
 });
 
@@ -138,6 +138,11 @@ wss.on('connection', (wsClient) => {
     subscribedFrontendClients.delete(wsClient);
   });
 });
+
+console.log(`SERVER_STARTUP: CORS Origin being used: "${CLIENT_ORIGIN}"`);
+console.log(
+  `SERVER_STARTUP: process.env.CLIENT_ORIGIN value: "${process.env.CLIENT_ORIGIN}"`
+);
 
 server.listen(PORT, () => {
   console.log(
