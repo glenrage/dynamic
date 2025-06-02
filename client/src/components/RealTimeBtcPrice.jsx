@@ -1,4 +1,3 @@
-// client/src/components/RealTimeBtcPrice.jsx
 import React, { useState, useEffect } from 'react';
 
 const getWebSocketURL = () => {
@@ -7,11 +6,6 @@ const getWebSocketURL = () => {
     window.location.hostname === 'localhost'
       ? 'localhost:3001'
       : window.location.host;
-  // If your API is on a different subdomain or path for WebSockets when deployed, adjust accordingly.
-  // For Vercel, if client is client.com and server is api.client.com, this needs to be api.client.com
-  // If client and server are served from same domain (e.g. server also serves client static files, or proxy)
-  // then window.location.host is correct.
-  // For now, assuming server is on localhost:3001 for dev, or same host in prod.
   return import.meta.env.VITE_WS_BASE_URL || `${protocol}${host}`;
 };
 
