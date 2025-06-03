@@ -6,13 +6,13 @@
 
 ## Overview
 
-This "Impulse Buy Blocker Game" challenges players to guess a hidden mathematical equation equaling a target number within six attempts. The project emphasizes secure game logic through a client-server architecture and integrates the Dynamic SDK for user authentication and data persistence. A key feature includes awarding an ERC721 NFT to users upon their first successful puzzle completion. The game playfully themes wallet access around puzzle completion to encourage cognitive engagement (activating the prefrontal cortex) before making financial decisions and acting on impulse.
+This "Impulse Buy Blocker Game" challenges players to guess a hidden mathematical equation equaling a target number within six attempts. The project emphasizes secure game logic through a client-server architecture and integrates the Dynamic SDK for user authentication and data persistence. A key feature includes awarding an ERC721 NFT to users upon their first successful puzzle completion. After completing a puzzle users may access their wallet.
 
 ## Core Features
 
-- Engaging equation-guessing gameplay.
 - Secure user authentication and wallet connection via Dynamic SDK.
 - Client-side input validation for immediate feedback (length, format, value).
+- Keyboard & Mouse input
 - Authoritative server-side game logic (puzzle generation, guess validation, tile coloring).
 - User metadata persistence (`hasEverSolvedAMathler`, `totalWins`, NFT flags) via Dynamic SDK.
 - **First Win NFT:** Users receive an ERC721 token on the Base Sepolia testnet for their first victory, with a link provided to view the transaction.
