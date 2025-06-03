@@ -29,7 +29,7 @@ export const GameProvider = ({ children }) => {
   const [error, setError] = useState(null);
   const [keyboardStates, setKeyboardStates] = useState({});
 
-  const { primaryWallet } = useDynamicContext();
+  const { primaryWallet, showAuthFlow } = useDynamicContext();
   const { persistGameOutcome, clearMathlerMetadataForTesting, isDynamicReady } =
     useUserGameData();
 
@@ -283,6 +283,11 @@ export const GameProvider = ({ children }) => {
 
   // Effect for global keyboard listener
   useEffect(() => {
+    // Only add the global keydown listener if no Dynamic login modal is showing
+    if (showAuthFlow) {
+      return;
+    }
+
     const handleKeyDown = (event) => {
       const keyFromEvent = event.key.toUpperCase();
       let keyToPass = null;
