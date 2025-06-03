@@ -30,8 +30,12 @@ export const GameProvider = ({ children }) => {
   const [keyboardStates, setKeyboardStates] = useState({});
 
   const { primaryWallet, showAuthFlow } = useDynamicContext();
-  const { persistGameOutcome, clearMathlerMetadataForTesting, isDynamicReady } =
-    useUserGameData();
+  const {
+    persistGameOutcome,
+    clearMathlerMetadataForTesting,
+    isDynamicReady,
+    lastNftMint,
+  } = useUserGameData();
 
   const startNewGame = useCallback(async () => {
     setIsLoading(true);
@@ -340,6 +344,7 @@ export const GameProvider = ({ children }) => {
         bypassPuzzle,
         clearMathlerMetadataForTesting,
         GAME_STATUSES,
+        lastNftMint,
       }}>
       {children}
     </GameContext.Provider>

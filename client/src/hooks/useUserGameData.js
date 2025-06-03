@@ -1,25 +1,44 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import {
   useDynamicContext,
   useUserUpdateRequest,
 } from '@dynamic-labs/sdk-react-core';
-import { getApiBaseUrl } from '../services/api';
+
+const getApiBaseUrl = () => {
+  if (typeof process !== 'undefined' && process.env) {
+    if (process.env.NODE_ENV === 'test' && process.env.JEST_MOCK_API_URL) {
+      return process.env.JEST_MOCK_API_URL;
+    }
+    if (process.env.VITE_BACKEND_API_URL) {
+      return process.env.VITE_BACKEND_API_URL;
+    }
+  }
+  console.warn(
+    'API URL not configured, using default: http://localhost:3001/api'
+  );
+  return 'http://localhost:3001/api';
+};
 
 const API_BASE_URL = getApiBaseUrl();
 
 export const useUserGameData = () => {
   const { user, primaryWallet } = useDynamicContext();
   const { updateUser } = useUserUpdateRequest();
+  const [lastNftMint, setLastNftMint] = useState({
+    txHash: null,
+    tokenId: null,
+  });
 
   const persistGameOutcome = useCallback(
     async (isWin, finalGuessesStrings, finalSolution) => {
+      setLastNftMint({ txHash: null, tokenId: null });
+
       if (!updateUser || !user || !primaryWallet) {
         console.warn('useUserGameData: Dynamic SDK components not ready.');
         return { success: false, error: 'Dynamic SDK components not ready.' };
       }
 
       const currentSdkUserMetadata = { ...(user.metadata || {}) };
-      // check if NFT has *already been received*.
       const hasAlreadyReceivedNft =
         currentSdkUserMetadata.hasReceivedFirstWinNft || false;
 
@@ -46,7 +65,6 @@ export const useUserGameData = () => {
         },
       };
 
-      // Set attempt flag only if they win AND have never received the NFT before.
       if (isWin && !hasAlreadyReceivedNft) {
         metadataToUpdate.firstWinNftAwardedOrAttempted = true;
       }
@@ -57,7 +75,6 @@ export const useUserGameData = () => {
           metadata: metadataToUpdate,
         });
 
-        // Trigger NFT Mint only if it's a win AND they haven't received the NFT before.
         if (isWin && !hasAlreadyReceivedNft) {
           try {
             const mintResponse = await fetch(
@@ -78,11 +95,10 @@ export const useUserGameData = () => {
               mintData.success &&
               mintData.transactionHash
             ) {
-              const txHash = mintData.transactionHash;
-              alert(
-                `🏆 Congratulations! Your First Win NFT (Token ID: ${mintData.tokenId}) is minting!` +
-                  `\nTransaction Hash: ${txHash}`
-              );
+              setLastNftMint({
+                txHash: mintData.transactionHash,
+                tokenId: mintData.tokenId || 'N/A',
+              });
 
               const finalMetadataAfterNft = {
                 ...metadataToUpdate,
@@ -101,21 +117,23 @@ export const useUserGameData = () => {
                 'useUserGameData: NFT Mint API call failed:',
                 mintData?.message || 'Unknown error.'
               );
-              alert(
-                `Congrats on your win! Issue minting NFT: ${mintData?.message}`
-              );
+              return {
+                success: true,
+                data: initialUpdateCallResult,
+                nftError: mintData?.message || 'NFT minting failed.',
+              };
             }
           } catch (nftError) {
             console.error(
               'useUserGameData: Error calling NFT mint API:',
               nftError
             );
-            alert(
-              `Congrats on your win! Issue minting NFT: ${nftError.message}`
-            );
+            return {
+              success: true,
+              data: initialUpdateCallResult,
+              nftError: nftError.message || 'Error during NFT mint API call.',
+            };
           }
-        } else if (isWin && hasAlreadyReceivedNft) {
-          alert(`🎉 Congratulations on another win!`);
         }
         return { success: true, data: initialUpdateCallResult };
       } catch (e) {
@@ -123,16 +141,15 @@ export const useUserGameData = () => {
         return { success: false, error: e.message || String(e) };
       }
     },
-    [updateUser, user, primaryWallet]
+    [updateUser, user, primaryWallet, setLastNftMint]
   );
 
   const clearMathlerMetadataForTesting = useCallback(async () => {
+    setLastNftMint({ txHash: null, tokenId: null });
     if (!updateUser || !user) {
-      alert('User not ready to clear metadata.');
       return { success: false, error: 'User not ready.' };
     }
     const currentSdkUserMetadata = user.metadata || {};
-
     const clearedMetadataPayload = {
       ...currentSdkUserMetadata,
       hasEverSolvedAMathler: false,
@@ -142,21 +159,18 @@ export const useUserGameData = () => {
 
     try {
       const result = await updateUser({ metadata: clearedMetadataPayload });
-      alert(
-        'Mathler game progress reset. NFT achievement data preserved. Refresh if needed.'
-      );
       return { success: true, data: result };
     } catch (e) {
       console.error('useUserGameData: Error clearing metadata:', e);
-      alert(`Error clearing metadata: ${e.message}`);
       return { success: false, error: e.message || String(e) };
     }
-  }, [updateUser, user]);
+  }, [updateUser, user, setLastNftMint]);
 
   return {
     persistGameOutcome,
     clearMathlerMetadataForTesting,
     isDynamicReady: !!(user && updateUser && primaryWallet),
     user,
+    lastNftMint,
   };
 };

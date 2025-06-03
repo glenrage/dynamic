@@ -265,7 +265,7 @@ describe('useUserGameData', () => {
 
       expect(alertSpy).toHaveBeenCalledWith(
         expect.stringContaining(
-          'Mathler game-specific metadata has been reset for testing. NFT flags preserved. Refresh may be needed'
+          'Mathler game progress reset. NFT achievement data preserved. Refresh if needed.'
         )
       );
     });

@@ -3,6 +3,8 @@ import { GameGrid } from './GameGrid';
 import { Keyboard } from './Keyboard';
 import { GAME_STATUSES } from '../constants/gameStatus';
 
+const BASE_SEPOLIA_TX_EXPLORER_PREFIX = 'https://sepolia.basescan.org/tx/';
+
 export const MathlerGame = () => {
   const {
     targetNumber,
@@ -18,6 +20,7 @@ export const MathlerGame = () => {
     keyboardStates,
     bypassPuzzle,
     clearMathlerMetadataForTesting,
+    lastNftMint,
   } = useGame();
 
   const MAX_GUESSES = 6;
@@ -145,9 +148,34 @@ export const MathlerGame = () => {
       {gameStatus !== GAME_STATUSES.PLAYING && (
         <div className='game-over-message'>
           {gameStatus === GAME_STATUSES.WON ? (
-            <p className='game-win-text'>
-              Congratulations! You solved it! <br />
-            </p>
+            <>
+              <p className='game-win-text'>
+                Congratulations! You solved it! <br />
+              </p>
+              {lastNftMint && lastNftMint.txHash && (
+                <div className='nft-mint-info'>
+                  <p>
+                    <strong>First Win NFT Minted!</strong>
+                  </p>
+                  {lastNftMint.tokenId && lastNftMint.tokenId !== 'N/A' && (
+                    <p>Token ID: {lastNftMint.tokenId}</p>
+                  )}
+                  <p>
+                    Transaction Hash: <br />
+                    <span className='nft-copy'>{lastNftMint.txHash}</span>
+                  </p>
+                  <p>
+                    <a
+                      href={`${BASE_SEPOLIA_TX_EXPLORER_PREFIX}${lastNftMint.txHash}`}
+                      target='_blank'
+                      rel='noopener noreferrer'
+                      style={{ color: 'blue', textDecoration: 'underline' }}>
+                      View on Base Sepolia Explorer
+                    </a>
+                  </p>
+                </div>
+              )}
+            </>
           ) : (
             <p className='game-lost-text'>
               Game Over! {solution && `The solution was: `}
