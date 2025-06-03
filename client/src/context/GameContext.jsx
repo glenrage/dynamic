@@ -1,4 +1,5 @@
-import {
+// src/context/GameContext.jsx
+import React, {
   createContext,
   useContext,
   useState,
@@ -8,8 +9,17 @@ import {
 import { useDynamicContext } from '@dynamic-labs/sdk-react-core';
 import { evaluateExpression } from '../lib/gameLogic';
 import { fetchNewPuzzle, submitUserGuess } from '../services/api';
-import { useUserGameData } from '../hooks/useUserGameData';
-import { GAME_STATUSES } from '../constants/gameStatus';
+import { useUserGameData } from '../hooks/useUserGameData'; // Corrected hook name
+
+// Define constants for game statuses
+export const GAME_STATUSES = {
+  LOADING: 'loading',
+  PLAYING: 'playing',
+  SUBMITTING: 'submitting',
+  WON: 'won',
+  LOST: 'lost',
+  ERROR_FETCHING: 'error_fetching',
+};
 
 const GameContext = createContext(undefined);
 
@@ -22,11 +32,13 @@ export const GameProvider = ({ children }) => {
   const [guesses, setGuesses] = useState([]);
   const [currentGuess, setCurrentGuess] = useState('');
   const [gameStatus, setGameStatus] = useState(GAME_STATUSES.LOADING);
-  const [isLoading, setIsLoading] = useState(true); // True when fetching puzzle initially
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [keyboardStates, setKeyboardStates] = useState({});
 
   const { primaryWallet } = useDynamicContext();
+  // `user` object is now also available from useUserGameData if needed here,
+  // but primaryWallet and isDynamicReady are the main checks for initialization.
   const { persistGameOutcome, clearMathlerMetadataForTesting, isDynamicReady } =
     useUserGameData();
 
@@ -34,18 +46,15 @@ export const GameProvider = ({ children }) => {
 
   const startNewGame = useCallback(async () => {
     setIsLoading(true);
-    setGameStatus(GAME_STATUSES.LOADING);
     setError(null);
     setSolutionRevealed('');
     setGuesses([]);
     setCurrentGuess('');
     setKeyboardStates({});
-
     try {
       const puzzleData = await fetchNewPuzzle();
-      if (!puzzleData.puzzleId) {
-        throw new Error('Puzzle data from server is missing puzzleId.');
-      }
+      if (!puzzleData.puzzleId)
+        throw new Error('Puzzle data missing puzzleId.');
       setCurrentPuzzleId(puzzleData.puzzleId);
       setTargetNumber(puzzleData.targetNumber);
       setSolutionLength(puzzleData.solutionLength);
@@ -61,7 +70,6 @@ export const GameProvider = ({ children }) => {
 
   useEffect(() => {
     if (primaryWallet && isDynamicReady) {
-      // If app is in its initial loading state and no puzzle is active, start a new game.
       if (
         isLoading &&
         !currentPuzzleId &&
@@ -119,14 +127,13 @@ export const GameProvider = ({ children }) => {
       if (
         isLoading ||
         gameStatus === GAME_STATUSES.SUBMITTING ||
-        gameStatus === GAME_STATUSES.WON ||
-        gameStatus === GAME_STATUSES.LOST ||
+        (gameStatus !== GAME_STATUSES.PLAYING &&
+          gameStatus !== GAME_STATUSES.SUBMITTING) ||
         !currentPuzzleId ||
         solutionLength === 0
-      ) {
+      )
         return;
-      }
-      if (gameStatus !== GAME_STATUSES.PLAYING) return;
+      if (gameStatus !== GAME_STATUSES.PLAYING) return; // Extra guard
 
       if (key === 'ENTER') {
         const submittedGuess = currentGuess;
@@ -139,9 +146,9 @@ export const GameProvider = ({ children }) => {
           setError('Invalid math expression format.');
           return;
         }
+
         setError(null);
         setGameStatus(GAME_STATUSES.SUBMITTING);
-
         try {
           const serverResult = await submitUserGuess(
             currentPuzzleId,
@@ -165,7 +172,7 @@ export const GameProvider = ({ children }) => {
             setError(serverResult.error);
           }
 
-          let finalStatus = serverResult.gameStatus; // 'won' or 'playing' from server
+          let finalStatus = serverResult.gameStatus; // 'won' or 'playing'
           if (
             finalStatus === GAME_STATUSES.PLAYING &&
             updatedGuesses.length >= MAX_GUESSES
@@ -182,7 +189,12 @@ export const GameProvider = ({ children }) => {
             finalStatus === GAME_STATUSES.WON ||
             finalStatus === GAME_STATUSES.LOST
           ) {
-            await persistGameOutcome(finalStatus === GAME_STATUSES.WON);
+            // Pass the array of guess strings for history
+            await persistGameOutcome(
+              finalStatus === GAME_STATUSES.WON,
+              updatedGuesses.map((g) => g.guess),
+              serverResult.solution || solutionRevealed
+            );
           }
         } catch (submitError) {
           setError(`Submission failed: ${submitError.message}`);
@@ -206,13 +218,15 @@ export const GameProvider = ({ children }) => {
       isLoading,
       currentPuzzleId,
       solutionLength,
+      targetNumber,
       persistGameOutcome,
+      MAX_GUESSES,
+      solutionRevealed,
       setError,
       setGuesses,
       setCurrentGuess,
       setGameStatus,
       setSolutionRevealed,
-      MAX_GUESSES,
     ]
   );
 
@@ -227,24 +241,32 @@ export const GameProvider = ({ children }) => {
     )
       return;
     setError(null);
-    setGameStatus(GAME_STATUSES.SUBMITTING);
+    // No need to set to SUBMITTING if we are not calling the server for guess validation
 
     const dummySolvedGuessDisplay = {
       guess: 'BYPASSED',
       result: Array(solutionLength).fill({ value: '✓', state: 'correct' }),
     };
-    setGuesses([dummySolvedGuessDisplay]);
-    setCurrentGuess('');
-    setSolutionRevealed('Puzzle Bypassed');
-    setGameStatus(GAME_STATUSES.WON);
+    const finalGuessesForMeta = [dummySolvedGuessDisplay]; // Represents the "winning" state
 
-    await persistGameOutcome(true);
+    setGuesses(finalGuessesForMeta); // Show this on the board
+    setCurrentGuess('');
+    setSolutionRevealed('Puzzle Bypassed'); // Or fetch actual solution if you had an endpoint for it
+    setGameStatus(GAME_STATUSES.WON); // Set to won locally
+
+    // Persist this win, passing the "bypassed" guess string array and a placeholder solution
+    await persistGameOutcome(
+      true,
+      finalGuessesForMeta.map((g) => g.guess),
+      'BYPASSED - Solution N/A'
+    );
   }, [
     gameStatus,
     isLoading,
     currentPuzzleId,
     solutionLength,
     persistGameOutcome,
+    MAX_GUESSES,
     setError,
     setGuesses,
     setCurrentGuess,

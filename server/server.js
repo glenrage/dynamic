@@ -1,6 +1,9 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const http = require('http');
+
+const { mintFirstWinNft } = require('./nftService');
 const { serveNewPuzzle, checkUserGuess } = require('./puzzles');
 
 const app = express();
@@ -44,6 +47,40 @@ app.post('/api/puzzle/submit-guess', (req, res) => {
   } catch (error) {
     console.error('Error checking guess:', error);
     res.status(500).json({ message: 'Internal server error checking guess' });
+  }
+});
+
+// Endpoint for minting the First Win NFT
+app.post('/api/feature/mint-first-win-nft', async (req, res) => {
+  const { userWalletAddress, userId } = req.body;
+
+  if (!userWalletAddress || !userId) {
+    return res.status(400).json({
+      success: false,
+      message: 'userWalletAddress and userId are required.',
+    });
+  }
+
+  console.log(
+    `Server: Received request to mint First Win NFT for user ${userId} to address ${userWalletAddress}`
+  );
+  try {
+    const result = await mintFirstWinNft(userWalletAddress, userId);
+    res.status(200).json({
+      success: true,
+      message: 'First Win NFT mint transaction initiated!',
+      transactionHash: result.transactionHash,
+      tokenId: result.tokenId,
+    });
+  } catch (error) {
+    console.error(
+      `Server: Error in /mint-first-win-nft for user ${userId}:`,
+      error
+    );
+    res.status(500).json({
+      success: false,
+      message: error.message || 'NFT minting process failed.',
+    });
   }
 });
 
