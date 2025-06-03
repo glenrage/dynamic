@@ -13,8 +13,8 @@ const SAMPLE_PUZZLES_DATA = [
   { internalId: 'p4', targetNumber: 100, solution: '50*2-0' },
   { internalId: 'p5', targetNumber: 1, solution: '10/5-1' },
   { internalId: 'p6', targetNumber: 15, solution: '10+5+0' },
-  { internalId: 'p7', targetNumber: 30, solution: '6*5+0' },
-  { internalId: 'p8', targetNumber: 8, solution: '4*4-8' },
+  { internalId: 'p7', targetNumber: 40, solution: '6*5+10' },
+  { internalId: 'p8', targetNumber: 4, solution: '4*4-10' },
 ];
 
 let SAMPLES_PUZZLE_INDEX = 0;

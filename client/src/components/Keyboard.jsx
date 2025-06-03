@@ -1,11 +1,8 @@
-// src/components/Keyboard.jsx
-import React from 'react';
-
 export const Keyboard = ({ onKeyPress, keyboardStates }) => {
   const rows = [
     ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'],
     ['+', '-', '*', '/'],
-    ['ENTER', 'BACKSPACE'], // Renamed from DELETE to BACKSPACE for consistency in logic
+    ['ENTER', 'BACKSPACE'],
   ];
 
   const handleButtonClick = (key) => {
@@ -17,8 +14,8 @@ export const Keyboard = ({ onKeyPress, keyboardStates }) => {
 
     if (key === 'ENTER' || key === 'BACKSPACE') {
       classNames += 'key-action ';
-      if (key === 'ENTER') classNames += 'key-enter'; // Specific style for Enter
-      if (key === 'BACKSPACE') classNames += 'key-backspace'; // Specific style for Delete
+      if (key === 'ENTER') classNames += 'key-enter';
+      if (key === 'BACKSPACE') classNames += 'key-backspace';
     } else if (['+', '-', '*', '/'].includes(key)) {
       classNames += 'key-operator ';
     }
@@ -46,13 +43,12 @@ export const Keyboard = ({ onKeyPress, keyboardStates }) => {
             <button
               key={key}
               onClick={() => handleButtonClick(key)}
-              className={getKeyClass(key)} // Apply dynamic class
+              className={getKeyClass(key)}
               style={{
                 flexBasis:
                   key === 'ENTER' || key === 'BACKSPACE' ? 'auto' : '10%',
               }}>
-              {key === 'BACKSPACE' ? 'DEL' : key}{' '}
-              {/* Display 'DEL' for Backspace key */}
+              {key === 'BACKSPACE' ? 'DEL' : key}
             </button>
           ))}
         </div>

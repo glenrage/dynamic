@@ -1,89 +1,71 @@
-# Mathler Game - Dynamic Take-Home Assignment
+# Impulse Buy Blocker Game - Dynamic Take-Home Assignment
 
-https://dynamic-iki7.vercel.app/
+**Play the Game:** [https://dynamic-iki7.vercel.app/](https://dynamic-iki7.vercel.app/)
 
-This project is a frontend take-home assignment to build "Mathler," a game similar to Wordle but with mathematical equations. The user has 6 guesses to find the hidden equation that equals a target number.
+**First Win NFT Contract (Base Sepolia):** [0xf5b77037a88b378997a437ac4c43692cfb58b448](https://sepolia.basescan.org/token/0xf5b77037a88b378997a437ac4c43692cfb58b448)
 
-## Core Features Implemented
+## Overview
 
-- Users can attempt to guess a hidden mathematical equation.
-- Input is validated for correct length and whether it evaluates to the target number.
-- Tile colors (green, yellow, grey) provide feedback on each guess.
-- User authentication and metadata storage are handled using the Dynamic SDK.
-- A "Lizard Brain Takeover!" (Bypass Puzzle) button allows users to immediately "solve" the puzzle and unlock features.
-- A "Play New Puzzle" button allows users to start a fresh game.
-- Game logic for puzzle generation and guess validation is handled by a backend API for security.
-- User metadata (`hasEverSolvedAMathler`, `totalWins`) is stored via Dynamic SDK to persist simple game achievements and unlock features.
+This "Impulse Buy Blocker Game" challenges players to guess a hidden mathematical equation equaling a target number within six attempts. The project emphasizes secure game logic through a client-server architecture and integrates the Dynamic SDK for user authentication and data persistence. A key feature includes awarding an ERC721 NFT to users upon their first successful puzzle completion. The game playfully themes wallet access around puzzle completion to encourage cognitive engagement (activating the prefrontal cortex) before making financial decisions and acting on impulse.
 
-## Architectural Decisions & Logic Distribution
+## Core Features
 
-A key decision in this project was to separate client-side responsibilities (UI rendering, user input) from server-side responsibilities (authoritative game logic, puzzle management) to enhance security and prevent client-side cheating.
+- Engaging equation-guessing gameplay.
+- Secure user authentication and wallet connection via Dynamic SDK.
+- Client-side input validation for immediate feedback (length, format, value).
+- Authoritative server-side game logic (puzzle generation, guess validation, tile coloring).
+- User metadata persistence (`hasEverSolvedAMathler`, `totalWins`, NFT flags) via Dynamic SDK.
+- **First Win NFT:** Users receive an ERC721 token on the Base Sepolia testnet for their first victory, with a link provided to view the transaction.
+- Optional "Bypass Puzzle" and game reset functionalities.
 
-### Client-Side Logic (`client/` - React Application)
+## Architecture & Logic Flow
 
-- **UI Rendering & User Interaction:**
-  - Manages user input from the virtual keyboard and physical keyboard.
-  - Displays game state: current guess, previous guesses with tile colors, target number, game status messages (win/loss/error), and loading states.
-- **State Management (`GameContext.jsx`):**
-  - Holds the current game's state: `targetNumber`, `solutionLength` (for grid setup), `guesses` (array of guess objects with tile states received from the server), `currentGuess` string, `gameStatus`, `isLoading`, `error`, `keyboardStates`, and the current `puzzleId` received from the server.
-  - Manages the flow of the game based on user actions and server responses.
-- **API Communication:**
-  - **Fetching New Puzzles:** When a new game starts (on initial load after login, or when "Play New Puzzle" is clicked), the client calls the `/api/puzzle/new` endpoint on our backend server. It receives a `puzzleId`, `targetNumber`, and `solutionLength`. The actual solution string is _not_ sent to the client at this stage.
-  - **Submitting Guesses:** When the user submits a guess, the client sends the `puzzleId` and the `guessString` to the `/api/puzzle/submit-guess` backend endpoint.
-  - **Receiving Guess Feedback:** The client receives a response from `/api/puzzle/submit-guess` containing the tile colors for the guess, whether the guess evaluated to the target, and the updated game status ('playing', 'won', 'lost'). If the game is won or lost, the server also sends the solution string for display.
-- **Dynamic SDK Integration:**
-  - Uses `useDynamicContext` for user authentication status (`user`, `primaryWallet`) and to control the auth flow (`setShowAuthFlow`).
-  - Uses `useUserUpdateRequest` (specifically the `updateUser` function) to persist minimal game outcomes (`hasEverSolvedAMathler`, `totalWins`) to the user's metadata on the Dynamic platform.
-- **Local Utilities (`client/src/lib/gameLogic.js`):**
-  - `evaluateExpression`: Can be used for an _optional, non-authoritative_ client-side check to see if an expression is valid or if it equals the target _before_ sending to the server. This can provide quicker feedback for simple errors but is not relied upon for game state changes. The server's evaluation is the source of truth.
-  - (Note: `getTileColors` was previously client-side but has been moved to be authoritative on the server).
+- **Client:** Manages UI, user input, and API communication. Uses `GameContext` for local game state and the Dynamic SDK for user auth and metadata updates. Performs non-authoritative client-side checks for quick UX.
+- **Server (Node.js/Express):**
+  - **Source of Truth:** Manages hidden puzzle solutions and authoritatively validates all user guesses.
+  - **Services:** Includes a puzzle service (generates unique puzzle instances) and an NFT minting service.
 
-### Server-Side Logic (`server/` - Node.js/Express API)
+## First Win NFT Minting Process
 
-- **Puzzle Management (`server/puzzles.js`):**
-  - Maintains a list of `SAMPLE_PUZZLES_DATA`, each with a `targetNumber` and its `solution`.
-  - `serveNewPuzzle()`:
-    - Selects a puzzle (currently cycles through the list).
-    - Generates a unique `puzzleId` for this specific instance of the game.
-    - Stores the `solution` and `targetNumber` associated with this `puzzleId` in an in-memory store (`ACTIVE_PUZZLES`) for a limited time. This is crucial so the server knows what solution to check against for subsequent guess submissions.
-    - Returns only `{ puzzleId, targetNumber, solutionLength }` to the client. **The solution string is NOT sent initially.**
-- **Authoritative Game Logic (`server/puzzles.js`):**
-  - `evaluateServerExpression()`: Server-side implementation to evaluate mathematical expressions.
-  - `getServerTileColors()`: Server-side implementation to determine tile colors (green, yellow, grey) by comparing a guess against the true solution.
-  - `checkUserGuess(puzzleId, guessString)`:
-    - Retrieves the correct `solution` and `targetNumber` using the provided `puzzleId` from `ACTIVE_PUZZLES`.
-    - Validates the `guessString` (e.g., length).
-    - Calls `evaluateServerExpression` to get the value of the user's guess.
-    - Compares the evaluated value with the `targetNumber`.
-    - Calls `getServerTileColors` to generate the feedback.
-    - Determines the `gameStatus` ('playing', 'won', 'lost').
-    - Returns a comprehensive response to the client, including the evaluated value, whether it matched the target, the `tileColors`, the `gameStatus`, and the `solution` string _only if_ the game status is 'won' or 'lost'.
-- **API Endpoints (`server/server.js`):**
-  - `GET /api/puzzle/new`: Provides the client with data to start a new game instance.
-  - `POST /api/puzzle/submit-guess`: Receives a guess from the client, validates it against the true solution, and returns detailed feedback.
-- **CORS Configuration:**
-  - The server enables CORS for the specific frontend origin (`http://localhost:5173`) to allow API requests.
+Upon a user's first correct puzzle solution:
+
+1.  Client detects the first win via Dynamic user metadata.
+2.  Client updates metadata (e.g., `firstWinNftAwardedOrAttempted`) and requests the server to mint.
+3.  Server's `nftService.js` (using Ethers.js) calls the `mintAchievement(recipient)` function on the deployed `SimpleMathlerSharedUriNft` smart contract (Base Sepolia), with the server's minter wallet paying gas.
+4.  The smart contract ensures the recipient hasn't already received this NFT (on-chain idempotency).
+5.  If successful, the server returns the transaction hash and token ID.
+6.  Client alerts the user with a Basescan link and updates metadata again (e.g., `hasReceivedFirstWinNft: true`).
+
+## Smart Contract & Deployment (`SimpleMathlerSharedUriNft.sol`)
+
+- **Type & Network:** ERC721 token on Base Sepolia (Testnet Address: `0xf5b77037a88b378997a437ac4c43692cfb58b448`).
+- **Standard:** OpenZeppelin ERC721 & Ownable.
+- **Core Logic:** `mintAchievement(recipient)` (`onlyOwner`, on-chain idempotency per address); `tokenURI(tokenId)` (shared base URI).
+- **Metadata:** Centralized JSON (current: JSONBin).
+- **Deployment:** Via Hardhat, with scripts for deployment and Basescan verification.
+
+## Testing
+
+The project includes unit and integration tests for key client-side logic using Jest and React Testing Library.
+
+- **`GameContext` (`GameContext.test.js`):**
+  - **Initialization:** Verifies that a new puzzle is fetched and the game state (target number, solution length, status) is correctly initialized when the context provider mounts and Dynamic SDK components are ready.
+  - **User Input Handling:** Tests client-side validation for guess length, mathematical format correctness, and whether the evaluated guess matches the target number. Ensures API calls are only made for valid submissions.
+  - **Guess Submission & State Updates:** Confirms that valid guesses are sent to the (mocked) server API, and the client state (guesses array, tile colors, game status) updates correctly based on mocked server responses for wins, losses, and continued play.
+  - **Game Reset & Bypass:** Ensures the "Play New Puzzle" (reset) and "Bypass Puzzle" functionalities correctly update game state and trigger appropriate actions like fetching a new puzzle or persisting a win.
+- **`useUserGameData` Hook (`useUserGameData.test.js`):**
+  - **Dynamic SDK Readiness:** Checks the `isDynamicReady` flag based on the availability of user, primary wallet, and update functions from mocked Dynamic SDK hooks.
+  - **Metadata Persistence (`persistGameOutcome`):**
+    - Verifies that user metadata (e.g., `hasEverSolvedAMathler`, `totalWins`, `mathlerHistory`) is correctly constructed and sent via the mocked `updateUser` function from Dynamic SDK upon game completion (win/loss).
+    - Tests the logic for the first-win NFT scenario: ensuring the (mocked) NFT minting API is called, and relevant metadata flags (`firstWinNftAwardedOrAttempted`, `hasReceivedFirstWinNft`) are set through one or two `updateUser` calls.
+    - Ensures NFT minting is not attempted for subsequent wins or losses.
+  - **Metadata Clearing (`clearMathlerMetadataForTesting`):** Validates that game-specific progress (like `totalWins`, `mathlerHistory`) is reset while intentionally preserving NFT-related achievement flags in the user metadata, as per design requirements.
+
+Testing focuses on ensuring the core game flow, user interactions, state management, and integration with Dynamic SDK (for metadata and NFT logic triggers) behave as expected under various conditions.
 
 ## Security Considerations
 
-Security was a primary driver for moving core game logic to the server.
-
-1.  **Preventing Client-Side Cheating:**
-    - By not sending the `solution` string to the client until the game is won or lost, users cannot simply inspect client-side code or network traffic to find the answer prematurely.
-    - All guess validation (expression evaluation, comparison with target, tile coloring) is performed authoritatively on the server. The client displays the feedback provided by the server.
-2.  **Server as Source of Truth:** The server manages the puzzle data and determines the outcome of each guess. This prevents malicious clients from manipulating game state to falsely claim a win.
-3.  **API Rate Limiting (Implicit/Future):** While not explicitly implemented in this simple server, a production API would have rate limiting on endpoints like `/api/puzzle/submit-guess` to prevent brute-force attacks or abuse. The "429 Too Many Requests" errors encountered during development with the Dynamic SDK highlight the importance of this.
-4.  **Dynamic SDK for Secure User Data:**
-    - User authentication is handled by the Dynamic SDK, providing a secure login mechanism.
-    - User metadata is stored via Dynamic's secure infrastructure. The client only sends the metadata payload; the SDK handles the authenticated request to update it.
-5.  **CORS:** Properly configured on the server to only allow requests from known frontend origins, protecting the API from being exploited by unauthorized websites.
-6.  **Puzzle Instance IDs (`puzzleId`):** Using a unique `puzzleId` for each game instance helps the server track the specific puzzle a user is attempting to solve. This is important for associating guesses with the correct solution, especially if multiple users are playing or if a user could have multiple game tabs (though not a feature here). The current in-memory storage of `ACTIVE_PUZZLES` is for demo purposes; a more robust solution would use a database or a more persistent cache.
-
-## Future Security Enhancements (Beyond Scope of Take-Home)
-
-- More robust server-side session management for `puzzleId`s.
-- Input sanitization on the server for all incoming data from the client.
-- Comprehensive API rate limiting.
-- Server-side tracking of guess attempts per `puzzleId` to enforce the `MAX_GUESSES` limit authoritatively (currently, the client tracks this, but the server could also enforce it on the `/submit-guess` endpoint).
-
-This architecture provides a good balance of user experience for the game while significantly improving security by making the server the ultimate authority on game rules and solutions.
+- **Server-Side Authority:** Game solutions and authoritative guess validation reside on the server, preventing client-side cheating.
+- **Controlled NFT Minting:** The smart contract's `mintAchievement` is `onlyOwner`, and the contract enforces one NFT per recipient address.
+- **Secure User Management:** Authentication and metadata are handled by the Dynamic SDK.
+- **CORS Protection:** The server API restricts requests to the designated frontend origin.

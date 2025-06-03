@@ -4,8 +4,24 @@ import {
   useUserUpdateRequest,
 } from '@dynamic-labs/sdk-react-core';
 
-const API_BASE_URL =
-  import.meta.env.VITE_BACKEND_API_URL || 'http://localhost:3001/api';
+// env var for jest testing
+const getApiBaseUrl = () => {
+  if (typeof process !== 'undefined' && process.env) {
+    if (process.env.NODE_ENV === 'test' && process.env.JEST_MOCK_API_URL) {
+      return process.env.JEST_MOCK_API_URL;
+    }
+    if (process.env.VITE_BACKEND_API_URL) {
+      return process.env.VITE_BACKEND_API_URL;
+    }
+  }
+  console.warn(
+    'API URL not configured, using default: http://localhost:3001/api'
+  );
+  return 'http://localhost:3001/api';
+};
+
+const API_BASE_URL = getApiBaseUrl();
+const BASE_SEPOLIA_TX_EXPLORER_PREFIX = 'https://sepolia.basescan.org/tx/';
 
 export const useUserGameData = () => {
   const { user, primaryWallet } = useDynamicContext();
@@ -15,64 +31,51 @@ export const useUserGameData = () => {
     async (isWin, finalGuessesStrings, finalSolution) => {
       if (!updateUser || !user || !primaryWallet) {
         console.warn(
-          'useUserGameData: Dynamic SDK components not ready for metadata/NFT.'
+          'useUserGameData: Dynamic SDK components not ready for metadata/NFT processing.'
         );
-        return;
+        return { success: false, error: 'Dynamic SDK components not ready.' };
       }
 
-      const currentSdkUserMetadata = user.metadata || {};
+      const currentSdkUserMetadata = { ...(user.metadata || {}) };
       const wasPreviouslySolvedEver =
         currentSdkUserMetadata.hasEverSolvedAMathler || false;
-      const todayDateString = new Date().toISOString().slice(0, 10);
 
+      const todayDateString = new Date().toISOString().slice(0, 10);
       let newTotalWins = currentSdkUserMetadata.totalWins || 0;
       if (isWin) {
         newTotalWins += 1;
       }
 
-      // Simplified daily history entry
       const todayHistoryEntry = {
-        guesses: finalGuessesStrings, // Array of guess strings
-        status: isWin ? 'won' : 'lost', // Assuming this function is only called on win/loss
-        ...(isWin && { solution: finalSolution }), // Add solution if game is over
+        guesses: finalGuessesStrings,
+        status: isWin ? 'won' : 'lost',
+        ...(isWin && { solution: finalSolution }),
       };
 
-      const metadataToSave = {
+      // Metadata for the first update (game outcome, and NFT attempt/receipt flags if first win)
+      let metadataToUpdate = {
         ...currentSdkUserMetadata,
-        hasEverSolvedAMathler: wasPreviouslySolvedEver || isWin, // Stays true once it becomes true
+        hasEverSolvedAMathler: wasPreviouslySolvedEver || isWin,
         totalWins: newTotalWins,
         mathlerHistory: {
           ...(currentSdkUserMetadata.mathlerHistory || {}),
           [todayDateString]: todayHistoryEntry,
         },
-        // Flag to indicate client has attempted to trigger/process the first win NFT mint.
-        // This helps prevent client from making multiple API calls for the same first win.
-        // The backend and smart contract are the ultimate guards against actual re-mints.
-        ...(isWin &&
-          !wasPreviouslySolvedEver && { firstWinNftAwardedOrAttempted: true }),
       };
 
-      console.log(
-        `useUserGameData: Persisting game outcome. Win: ${isWin}, UserID: ${user.userId}`
-      );
-      console.log('useUserGameData: Payload for updateUser (metadata):', {
-        metadata: metadataToSave,
-      });
+      if (isWin && !wasPreviouslySolvedEver) {
+        metadataToUpdate.firstWinNftAwardedOrAttempted = true;
+        // We will add hasReceivedFirstWinNft after successful minting in this same block
+      }
 
+      let initialUpdateCallResult;
       try {
-        const metadataUpdateResult = await updateUser({
-          metadata: metadataToSave,
+        initialUpdateCallResult = await updateUser({
+          metadata: metadataToUpdate,
         });
-        console.log(
-          'useUserGameData: User metadata update SUCCESS:',
-          metadataUpdateResult
-        );
 
-        // ---- Trigger NFT Mint if it's the user's first ever win ----
+        // ---- Trigger NFT Mint AND second metadata update if it's the user's first ever win ----
         if (isWin && !wasPreviouslySolvedEver) {
-          console.log(
-            'useUserGameData: First ever solve! Triggering NFT mint via backend.'
-          );
           try {
             const mintResponse = await fetch(
               `${API_BASE_URL}/feature/mint-first-win-nft`,
@@ -87,30 +90,44 @@ export const useUserGameData = () => {
             );
             const mintData = await mintResponse.json();
 
-            if (!mintResponse.ok || !mintData.success) {
-              // Log the error but don't overwrite the general game success message with an NFT-specific error
-              // unless it's critical or you want to inform the user specifically about the NFT part.
-              console.error(
-                'useUserGameData: NFT Mint API call failed from client:',
-                mintData.message || 'Unknown error'
-              );
-              alert(
-                `Congratulations on your win! However, there was an issue minting your achievement NFT: ${
-                  mintData.message ||
-                  'Please try again later or contact support.'
-                }`
-              );
-            } else {
-              console.log(
-                'useUserGameData: NFT Mint API call successful:',
-                mintData
-              );
+            if (
+              mintResponse.ok &&
+              mintData.success &&
+              mintData.transactionHash
+            ) {
+              const txHash = mintData.transactionHash;
+              const explorerUrl = `${BASE_SEPOLIA_TX_EXPLORER_PREFIX}${txHash}`;
+
               alert(
                 `🏆 Congratulations! Your First Win NFT (Token ID: ${
                   mintData.tokenId || 'N/A'
-                }) is being minted! Transaction: ${
-                  mintData.transactionHash
-                }. Check your wallet on Base Sepolia soon.`
+                }) is being minted!` +
+                  `\nTransaction Hash: ${txHash}` +
+                  `\n\nView on Base Sepolia Explorer (copy link):\n${explorerUrl}` +
+                  '\n\nCheck your wallet soon.'
+              );
+
+              // Update metadata again to include the receipt flag
+              // Build upon the metadata that was just set (or intended to be set)
+              const finalMetadataAfterNft = {
+                ...metadataToUpdate,
+                hasReceivedFirstWinNft: true,
+              };
+              try {
+                await updateUser({ metadata: finalMetadataAfterNft });
+              } catch (receiptUpdateError) {
+                console.error(
+                  'useUserGameData: Error on updating metadata with NFT receipt:',
+                  receiptUpdateError
+                );
+              }
+            } else {
+              console.error(
+                'useUserGameData: NFT Mint API call failed or missing txHash:',
+                mintData?.message || 'Unknown server error.'
+              );
+              alert(
+                `Congratulations on your win! However, there was an issue minting your achievement NFT: ${mintData?.message}`
               );
             }
           } catch (nftError) {
@@ -122,10 +139,18 @@ export const useUserGameData = () => {
               `Congratulations on your win! There was an issue trying to mint your achievement NFT: ${nftError.message}`
             );
           }
+        } else if (isWin && wasPreviouslySolvedEver) {
+          // Subsequent win
+          alert(
+            `🎉 Congratulations on solving another puzzle! Keep up the great work!`
+          );
         }
+        // If not a win, no special alert here, just the metadata update.
+
+        return { success: true, data: initialUpdateCallResult };
       } catch (e) {
-        console.error('useUserGameData: Error updating user metadata:', e);
-        // Handle metadata update error if necessary (e.g., inform user data might not be saved)
+        console.error('useUserGameData: Error on updateUser:', e);
+        return { success: false, error: e.message || String(e) };
       }
     },
     [updateUser, user, primaryWallet]
@@ -136,37 +161,35 @@ export const useUserGameData = () => {
       alert(
         'User not ready to clear metadata. Please ensure you are logged in.'
       );
-      return;
+      return { success: false, error: 'User not ready.' };
     }
     const currentSdkUserMetadata = user.metadata || {};
+
     const clearedMetadataPayload = {
-      ...currentSdkUserMetadata, // Preserve other metadata
+      ...currentSdkUserMetadata,
+      // Game-specific fields to reset:
       hasEverSolvedAMathler: false,
       totalWins: 0,
-      mathlerHistory: {}, // Clear history too for a full reset feel
-      firstWinNftAwardedOrAttempted: false, // Reset NFT attempt flag
-      // If you added 'hasReceivedFirstWinNft' directly, reset that too.
-      // delete clearedMetadataPayload.hasReceivedFirstWinNft;
+      mathlerHistory: {},
     };
 
-    console.log('useUserGameData: Attempting to CLEAR Mathler metadata.');
     try {
-      await updateUser({ metadata: clearedMetadataPayload });
+      const result = await updateUser({ metadata: clearedMetadataPayload });
       alert(
-        'Mathler game metadata has been reset for testing. You might need to refresh the page to see UI changes fully reflect if the user object has not updated yet.'
+        'Mathler game-specific metadata has been reset for testing. NFT flags preserved. Refresh may be needed'
       );
+      return { success: true, data: result };
     } catch (e) {
       console.error('useUserGameData: Error clearing Mathler metadata:', e);
       alert(`Error clearing metadata: ${e.message}`);
+      return { success: false, error: e.message || String(e) };
     }
   }, [updateUser, user]);
 
   return {
     persistGameOutcome,
     clearMathlerMetadataForTesting,
-    // isDynamicReady checks if user and updateUser (from useUserUpdateRequest) are available.
-    // primaryWallet is also needed for minting.
     isDynamicReady: !!(user && updateUser && primaryWallet),
-    user, // Expose user for convenience if GameContext needs it directly for other things
+    user,
   };
 };

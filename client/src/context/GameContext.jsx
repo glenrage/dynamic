@@ -1,5 +1,4 @@
-// src/context/GameContext.jsx
-import React, {
+import {
   createContext,
   useContext,
   useState,
@@ -9,19 +8,13 @@ import React, {
 import { useDynamicContext } from '@dynamic-labs/sdk-react-core';
 import { evaluateExpression } from '../lib/gameLogic';
 import { fetchNewPuzzle, submitUserGuess } from '../services/api';
-import { useUserGameData } from '../hooks/useUserGameData'; // Corrected hook name
-
-// Define constants for game statuses
-export const GAME_STATUSES = {
-  LOADING: 'loading',
-  PLAYING: 'playing',
-  SUBMITTING: 'submitting',
-  WON: 'won',
-  LOST: 'lost',
-  ERROR_FETCHING: 'error_fetching',
-};
+import { useUserGameData } from '../hooks/useUserGameData';
+import { GAME_STATUSES } from '../constants/gameStatus';
 
 const GameContext = createContext(undefined);
+
+const MAX_GUESSES = 6;
+const VALID_INPUT_CHARS = '0123456789+-*/';
 
 export const GameProvider = ({ children }) => {
   const [currentPuzzleId, setCurrentPuzzleId] = useState(null);
@@ -37,12 +30,8 @@ export const GameProvider = ({ children }) => {
   const [keyboardStates, setKeyboardStates] = useState({});
 
   const { primaryWallet } = useDynamicContext();
-  // `user` object is now also available from useUserGameData if needed here,
-  // but primaryWallet and isDynamicReady are the main checks for initialization.
   const { persistGameOutcome, clearMathlerMetadataForTesting, isDynamicReady } =
     useUserGameData();
-
-  const MAX_GUESSES = 6;
 
   const startNewGame = useCallback(async () => {
     setIsLoading(true);
@@ -53,37 +42,44 @@ export const GameProvider = ({ children }) => {
     setKeyboardStates({});
     try {
       const puzzleData = await fetchNewPuzzle();
-      if (!puzzleData.puzzleId)
-        throw new Error('Puzzle data missing puzzleId.');
+      if (!puzzleData || !puzzleData.puzzleId) {
+        // Added check for puzzleData itself
+        throw new Error('Puzzle data missing or invalid.');
+      }
       setCurrentPuzzleId(puzzleData.puzzleId);
       setTargetNumber(puzzleData.targetNumber);
       setSolutionLength(puzzleData.solutionLength);
       setGameStatus(GAME_STATUSES.PLAYING);
     } catch (fetchError) {
+      console.error('Error starting new game:', fetchError);
       setError(`Could not load new puzzle: ${fetchError.message}`);
       setGameStatus(GAME_STATUSES.ERROR_FETCHING);
-      setSolutionLength(0);
+      setSolutionLength(0); // Ensure solutionLength is reset on error
     } finally {
       setIsLoading(false);
     }
   }, []);
 
+  // Effect for initializing or resetting the game based on auth/puzzle state
   useEffect(() => {
     if (primaryWallet && isDynamicReady) {
+      // If ready to play, but no puzzle is loaded and not in an error state from fetching
       if (
+        !currentPuzzleId &&
+        gameStatus !== GAME_STATUSES.ERROR_FETCHING &&
+        !isLoading
+      ) {
+        startNewGame();
+      } else if (
         isLoading &&
         !currentPuzzleId &&
         gameStatus !== GAME_STATUSES.ERROR_FETCHING
       ) {
-        startNewGame();
-      } else if (
-        !isLoading &&
-        !currentPuzzleId &&
-        gameStatus !== GAME_STATUSES.ERROR_FETCHING
-      ) {
+        // Initial load case
         startNewGame();
       }
     } else {
+      // Not ready to play (e.g., logged out)
       setIsLoading(true);
       setCurrentPuzzleId(null);
       setTargetNumber(0);
@@ -91,28 +87,31 @@ export const GameProvider = ({ children }) => {
       setSolutionRevealed('');
       setGuesses([]);
       setCurrentGuess('');
-      setGameStatus(GAME_STATUSES.PLAYING);
       setKeyboardStates({});
       setError(null);
+      setGameStatus(GAME_STATUSES.LOADING);
     }
   }, [
     primaryWallet,
     isDynamicReady,
-    isLoading,
     currentPuzzleId,
-    startNewGame,
     gameStatus,
+    isLoading,
+    startNewGame,
   ]);
 
+  // Effect to update keyboard character states based on guesses
   useEffect(() => {
     const newStates = {};
     guesses.forEach((g) => {
       if (g && g.result) {
         g.result.forEach((tile) => {
+          const charState = newStates[tile.value];
+          // Prioritize 'correct' > 'present' > 'absent'
           if (
-            !newStates[tile.value] ||
-            newStates[tile.value] === 'absent' ||
-            (newStates[tile.value] === 'present' && tile.state === 'correct')
+            tile.state === 'correct' ||
+            (tile.state === 'present' && charState !== 'correct') ||
+            !charState
           ) {
             newStates[tile.value] = tile.state;
           }
@@ -124,26 +123,42 @@ export const GameProvider = ({ children }) => {
 
   const handleKeyPress = useCallback(
     async (key) => {
-      if (
-        isLoading ||
-        gameStatus === GAME_STATUSES.SUBMITTING ||
-        (gameStatus !== GAME_STATUSES.PLAYING &&
-          gameStatus !== GAME_STATUSES.SUBMITTING) ||
-        !currentPuzzleId ||
-        solutionLength === 0
-      )
-        return;
-      if (gameStatus !== GAME_STATUSES.PLAYING) return; // Extra guard
+      const isGamePlayable =
+        gameStatus === GAME_STATUSES.PLAYING &&
+        currentPuzzleId &&
+        solutionLength > 0 &&
+        !isLoading;
+      if (!isGamePlayable && gameStatus !== GAME_STATUSES.SUBMITTING) {
+        // Allow submitting state
+        if (key === 'ENTER' && gameStatus === GAME_STATUSES.SUBMITTING) {
+          // If already submitting, don't process another Enter.
+          // This could happen with rapid clicks/presses.
+          return;
+        }
+        if (!isGamePlayable) return; // General guard for non-playable states
+      }
 
       if (key === 'ENTER') {
         const submittedGuess = currentGuess;
+
         if (submittedGuess.length !== solutionLength) {
           setError(`Equation must be ${solutionLength} characters.`);
           return;
         }
-        const localEval = evaluateExpression(submittedGuess);
-        if (localEval === null) {
-          setError('Invalid math expression format.');
+
+        const localEvalResult = evaluateExpression(submittedGuess);
+
+        if (localEvalResult === null || typeof localEvalResult !== 'number') {
+          setError(
+            'Your equation is not a valid mathematical format. Please check for errors like hanging operators or typos.'
+          );
+          return;
+        }
+
+        if (localEvalResult !== targetNumber) {
+          setError(
+            `Your equation (${submittedGuess}) evaluates to ${localEvalResult}, not the target ${targetNumber}. Try again!`
+          );
           return;
         }
 
@@ -154,6 +169,12 @@ export const GameProvider = ({ children }) => {
             currentPuzzleId,
             submittedGuess
           );
+
+          if (!serverResult || !serverResult.tileColors) {
+            // Basic validation of server response
+            throw new Error('Received invalid response from server.');
+          }
+
           const newGuessDisplay = {
             guess: submittedGuess,
             result: serverResult.tileColors.map((state, index) => ({
@@ -170,9 +191,12 @@ export const GameProvider = ({ children }) => {
             serverResult.gameStatus === GAME_STATUSES.PLAYING
           ) {
             setError(serverResult.error);
+          } else if (!serverResult.error) {
+            // Only clear error if server confirms no error
+            setError(null);
           }
 
-          let finalStatus = serverResult.gameStatus; // 'won' or 'playing'
+          let finalStatus = serverResult.gameStatus;
           if (
             finalStatus === GAME_STATUSES.PLAYING &&
             updatedGuesses.length >= MAX_GUESSES
@@ -189,7 +213,6 @@ export const GameProvider = ({ children }) => {
             finalStatus === GAME_STATUSES.WON ||
             finalStatus === GAME_STATUSES.LOST
           ) {
-            // Pass the array of guess strings for history
             await persistGameOutcome(
               finalStatus === GAME_STATUSES.WON,
               updatedGuesses.map((g) => g.guess),
@@ -197,18 +220,21 @@ export const GameProvider = ({ children }) => {
             );
           }
         } catch (submitError) {
-          setError(`Submission failed: ${submitError.message}`);
+          console.error('Error submitting guess:', submitError);
+          setError(
+            `Submission failed: ${submitError.message}. Please try again.`
+          );
           setGameStatus(GAME_STATUSES.PLAYING);
         }
       } else if (key === 'BACKSPACE') {
+        setError(null);
         setCurrentGuess((prev) => prev.slice(0, -1));
-        setError(null);
       } else if (
-        currentGuess.length < solutionLength &&
-        '0123456789+-*/'.includes(key)
+        VALID_INPUT_CHARS.includes(key) &&
+        currentGuess.length < solutionLength
       ) {
-        setCurrentGuess((prev) => prev + key);
         setError(null);
+        setCurrentGuess((prev) => prev + key);
       }
     },
     [
@@ -220,80 +246,76 @@ export const GameProvider = ({ children }) => {
       solutionLength,
       targetNumber,
       persistGameOutcome,
-      MAX_GUESSES,
       solutionRevealed,
-      setError,
-      setGuesses,
-      setCurrentGuess,
-      setGameStatus,
-      setSolutionRevealed,
     ]
   );
 
   const bypassPuzzle = useCallback(async () => {
-    if (
-      isLoading ||
-      gameStatus === GAME_STATUSES.SUBMITTING ||
-      (gameStatus !== GAME_STATUSES.PLAYING &&
-        gameStatus !== GAME_STATUSES.SUBMITTING) ||
-      !currentPuzzleId ||
-      solutionLength === 0
-    )
-      return;
-    setError(null);
-    // No need to set to SUBMITTING if we are not calling the server for guess validation
+    const isGamePlayable =
+      gameStatus === GAME_STATUSES.PLAYING &&
+      currentPuzzleId &&
+      solutionLength > 0 &&
+      !isLoading;
+    if (!isGamePlayable) return;
 
+    setError(null);
     const dummySolvedGuessDisplay = {
       guess: 'BYPASSED',
       result: Array(solutionLength).fill({ value: '✓', state: 'correct' }),
     };
-    const finalGuessesForMeta = [dummySolvedGuessDisplay]; // Represents the "winning" state
-
-    setGuesses(finalGuessesForMeta); // Show this on the board
+    setGuesses([dummySolvedGuessDisplay]);
     setCurrentGuess('');
-    setSolutionRevealed('Puzzle Bypassed'); // Or fetch actual solution if you had an endpoint for it
-    setGameStatus(GAME_STATUSES.WON); // Set to won locally
+    setSolutionRevealed('Puzzle Bypassed');
+    setGameStatus(GAME_STATUSES.WON);
 
-    // Persist this win, passing the "bypassed" guess string array and a placeholder solution
-    await persistGameOutcome(
-      true,
-      finalGuessesForMeta.map((g) => g.guess),
-      'BYPASSED - Solution N/A'
-    );
+    await persistGameOutcome(true, ['BYPASSED'], 'BYPASSED - Solution N/A');
   }, [
     gameStatus,
     isLoading,
     currentPuzzleId,
     solutionLength,
     persistGameOutcome,
-    MAX_GUESSES,
-    setError,
-    setGuesses,
-    setCurrentGuess,
-    setGameStatus,
-    setSolutionRevealed,
   ]);
 
   const resetGame = useCallback(() => {
     startNewGame();
   }, [startNewGame]);
 
+  // Effect for global keyboard listener
   useEffect(() => {
     const handleKeyDown = (event) => {
-      const key = event.key.toUpperCase();
+      const keyFromEvent = event.key.toUpperCase();
+      let keyToPass = null;
+
       if (
-        (key === 'ENTER' ||
-          key === 'BACKSPACE' ||
-          '0123456789+-*/'.includes(event.key)) &&
-        document.activeElement?.tagName !== 'INPUT' &&
-        document.activeElement?.tagName !== 'TEXTAREA'
+        document.activeElement?.tagName === 'INPUT' ||
+        document.activeElement?.tagName === 'TEXTAREA'
       ) {
+        return; // Don't interfere with text inputs
+      }
+
+      if (keyFromEvent === 'ENTER') {
+        keyToPass = 'ENTER';
+      } else if (keyFromEvent === 'BACKSPACE') {
+        keyToPass = 'BACKSPACE';
+      } else if (
+        VALID_INPUT_CHARS.includes(event.key) &&
+        event.key.length === 1
+      ) {
+        // ensure it's a single char
+        keyToPass = event.key;
+      }
+
+      if (keyToPass) {
         event.preventDefault();
-        handleKeyPress(key === 'BACKSPACE' ? 'BACKSPACE' : event.key);
+        handleKeyPress(keyToPass);
       }
     };
+
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
   }, [handleKeyPress]);
 
   return (
@@ -321,7 +343,8 @@ export const GameProvider = ({ children }) => {
 
 export const useGame = () => {
   const context = useContext(GameContext);
-  if (context === undefined)
+  if (context === undefined) {
     throw new Error('useGame must be used within a GameProvider');
+  }
   return context;
 };

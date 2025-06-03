@@ -7,16 +7,34 @@ function App() {
   const { primaryWallet, user, setShowAuthFlow } = useDynamicContext();
   const hasSolvedMathler = user?.metadata?.hasEverSolvedAMathler || false;
 
-  console.log({ user });
-
   const handleWalletButtonClick = () => {
     if (hasSolvedMathler) {
       setShowAuthFlow(true);
     }
   };
 
+  console.log({ user });
+
   return (
     <div className='app-container'>
+      <header className='app-header'>
+        <div className='login-button-container'>
+          {primaryWallet ? (
+            <button
+              onClick={handleWalletButtonClick}
+              className='login-button connected-button'>
+              Connected: {primaryWallet.address.slice(0, 6)}...
+            </button>
+          ) : (
+            <button
+              onClick={() => setShowAuthFlow(true)}
+              className='login-button'>
+              Login / Connect Wallet
+            </button>
+          )}
+        </div>
+      </header>
+
       <h1 className='title'>Mathler</h1>
 
       <div className='blurb-section'>
@@ -39,22 +57,6 @@ function App() {
             make mindful financial decisions!
           </strong>
         </p>
-      </div>
-
-      <div className='login-button-container'>
-        {primaryWallet ? (
-          <button
-            onClick={handleWalletButtonClick}
-            className='login-button connected-button'>
-            Connected: {primaryWallet.address.slice(0, 6)}...
-          </button>
-        ) : (
-          <button
-            onClick={() => setShowAuthFlow(true)}
-            className='login-button'>
-            Login / Connect Wallet
-          </button>
-        )}
       </div>
 
       {!primaryWallet && (

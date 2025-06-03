@@ -85,17 +85,19 @@ export const MathlerGame = () => {
     );
   }
 
-  // If there's an error message from GameContext and it's not related to game over.
-  if (error && gameStatus === GAME_STATUSES.PLAYING) {
-    return (
-      <div className='game-container'>
-        <h2 className='target-number-display'>Mathler Game</h2>
-        <div className='game-error-message'>{error}</div>
-        <button onClick={resetGame} className='play-again-button'>
-          Try Reloading Puzzle
-        </button>
-      </div>
-    );
+  if (error) {
+    // Check if it's a critical error where resetting might be appropriate
+    if (gameStatus === GAME_STATUSES.ERROR_FETCHING) {
+      return (
+        <div className='game-container'>
+          <h2 className='target-number-display'>Mathler Game</h2>
+          <div className='game-error-message'>Critical Error: {error}</div>
+          <button onClick={resetGame} className='play-again-button'>
+            Try Reloading Puzzle
+          </button>
+        </div>
+      );
+    }
   }
 
   const isBypassButtonDisabled = gameStatus !== GAME_STATUSES.PLAYING;
@@ -108,6 +110,14 @@ export const MathlerGame = () => {
           {targetNumber > 0 ? targetNumber : '...'}
         </span>
       </h2>
+
+      {error && gameStatus === GAME_STATUSES.PLAYING && (
+        <div
+          className='game-error-message'
+          style={{ color: 'red', marginBottom: '10px' }}>
+          {error}
+        </div>
+      )}
 
       <div className='lizard-brain-section'>
         <button

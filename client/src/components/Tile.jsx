@@ -1,6 +1,3 @@
-// src/components/Tile.jsx
-import React from 'react';
-
 export const Tile = ({ value, state }) => {
   let tileClass = 'tile ';
 
@@ -17,13 +14,12 @@ export const Tile = ({ value, state }) => {
     case 'current-typing':
       tileClass += 'tile-current-typing';
       break;
-    case 'empty': // This applies to empty slots in the current row AND future rows
+    case 'empty':
     default:
       tileClass += 'tile-empty';
       break;
   }
 
-  // Ensure value is treated as string, and display only if non-empty
   const displayValue = String(value || '').toUpperCase();
 
   return <div className={tileClass}>{displayValue}</div>;
