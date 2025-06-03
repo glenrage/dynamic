@@ -3,22 +3,7 @@ import {
   useDynamicContext,
   useUserUpdateRequest,
 } from '@dynamic-labs/sdk-react-core';
-
-// env var for jest testing
-const getApiBaseUrl = () => {
-  if (typeof process !== 'undefined' && process.env) {
-    if (process.env.NODE_ENV === 'test' && process.env.JEST_MOCK_API_URL) {
-      return process.env.JEST_MOCK_API_URL;
-    }
-    if (process.env.VITE_BACKEND_API_URL) {
-      return process.env.VITE_BACKEND_API_URL;
-    }
-  }
-  console.warn(
-    'API URL not configured, using default: http://localhost:3001/api'
-  );
-  return 'http://localhost:3001/api';
-};
+import { getApiBaseUrl } from '../services/api';
 
 const API_BASE_URL = getApiBaseUrl();
 const BASE_SEPOLIA_TX_EXPLORER_PREFIX = 'https://sepolia.basescan.org/tx/';
