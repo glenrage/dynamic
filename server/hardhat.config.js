@@ -1,11 +1,9 @@
-// hardhat.config.js
 require('@nomicfoundation/hardhat-toolbox');
-require('dotenv').config({ path: './.env.hardhat' }); // Ensure it loads the correct .env file
+require('dotenv').config({ path: './.env.hardhat' });
 
 const deployerPrivateKey = process.env.DEPLOYER_PRIVATE_KEY;
 const accountsToUse = deployerPrivateKey ? [deployerPrivateKey] : [];
 
-/** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
   solidity: '0.8.20',
   networks: {

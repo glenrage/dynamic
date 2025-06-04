@@ -1,13 +1,9 @@
-// server/nftService.js
 const { ethers } = require('ethers');
-// dotenv should be loaded by server.js at the top level if using one .env file
-// If you have separate .env files, require('dotenv').config({ path: './path/to/server.env' });
 
 const RPC_URL = process.env.RPC_URL;
 const MINTER_PRIVATE_KEY = process.env.MINTER_PRIVATE_KEY;
 const NFT_CONTRACT_ADDRESS = process.env.NFT_CONTRACT_ADDRESS;
 
-// ABI for SimpleMathlerSharedUriNft (ensure this matches your deployed contract)
 const NFT_ABI = [
   'constructor(address initialOwner, string memory baseURI)',
   'event AchievementNftMinted(address indexed recipient, uint256 indexed tokenId)',
@@ -50,26 +46,12 @@ const mintFirstWinNft = async (userWalletAddress, userId) => {
     throw new Error('NFT Service is not properly initialized.');
   }
 
-  // SERVER-SIDE IDEMPOTENCY PRE-CHECK (Recommended)
-  // TODO: Check if this 'userId' has already been recorded as receiving the "first win" NFT.
-  // This prevents unnecessary on-chain transaction attempts if the contract's check would also revert.
-  // This could involve a DB lookup or checking a flag in Dynamic metadata set by a previous successful mint.
-  // For example:
-  // if (await hasUserAlreadyReceivedFirstWinNft(userId)) {
-  //    console.log(`NFT Service: User ${userId} already flagged as having received the first win NFT.`);
-  //    throw new Error("First Win NFT already processed for this user.");
-  // }
-
   try {
     console.log(
       `NFT Service: Attempting to mint 'First Win NFT' to ${userWalletAddress} (User ID: ${userId})`
     );
     // The SimpleMathlerSharedUriNft contract's mintAchievement function only needs the recipient address.
-    const tx = await nftContract.mintAchievement(userWalletAddress, {
-      // You might need to manually specify gas limit or price for Base Sepolia if defaults cause issues
-      // gasLimit: ethers.utils.hexlify(300000), // Example gas limit
-      // gasPrice: ethers.utils.parseUnits('0.1', 'gwei'), // Example gas price for Base
-    });
+    const tx = await nftContract.mintAchievement(userWalletAddress, {});
 
     console.log(`NFT Service: Mint transaction sent: ${tx.hash}`);
     const receipt = await tx.wait(1); // Wait for 1 confirmation
@@ -89,13 +71,10 @@ const mintFirstWinNft = async (userWalletAddress, userId) => {
             break;
           }
         } catch (e) {
-          /* Not the event we are looking for, or malformed log */
+          console.error(e);
         }
       }
     }
-
-    // TODO: After successful mint, record this in your system (DB or Dynamic metadata)
-    // e.g., markUserReceivedFirstWinNft(userId, mintedTokenId, tx.hash);
 
     return { success: true, transactionHash: tx.hash, tokenId: mintedTokenId };
   } catch (error) {
@@ -104,7 +83,7 @@ const mintFirstWinNft = async (userWalletAddress, userId) => {
       error
     );
     let message = `NFT minting failed: ${error.message}`;
-    // Try to extract more specific revert reasons
+
     if (error.reason) message = `NFT minting failed: ${error.reason}`;
     else if (error.data?.message)
       message = `NFT minting failed: ${error.data.message}`;
