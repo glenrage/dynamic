@@ -13,7 +13,7 @@ function App() {
     }
   };
 
-  console.log({ user });
+  console.log('Users Metadata', user?.metadata);
 
   return (
     <div className='app-container'>

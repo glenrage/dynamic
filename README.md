@@ -74,6 +74,9 @@ Backend API functionality and direct smart contract interactions (NFT minting su
 - **Secure User Management:** Authentication and metadata are handled by the Dynamic SDK.
 - **CORS Protection:** Server API restricts requests to the designated frontend origin.
 
-## Known Issues (not enough time to fix)
+## Known Issues / Future considerations (not enough time to fix)
 
-- Upon login, there may be a bug where some login modals aren't correctly accepting number input for 2FA auth codes with email address, a workaround is copying and pasting the numbers into the input.
+- Upon login, there may be a bug where some login modals from other wallet providers that aren't correctly accepting number input for 2FA auth codes with email address, a workaround is copying and pasting the numbers into the input.
+- Replace console logs with structured logging library
+- Refactor for better readability
+- Improved error handling
