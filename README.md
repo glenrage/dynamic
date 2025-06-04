@@ -6,7 +6,7 @@
 
 ## Overview
 
-This "Impulse Buy Blocker Game" challenges players to guess a hidden mathematical equation equaling a target number within six attempts. The project emphasizes secure game logic through a client-server architecture and integrates the Dynamic SDK for user authentication and data persistence. A key feature includes awarding a custom-built Mathler NFT to users upon their first successful puzzle completion. After completing a puzzle, users may access their wallet, promoting mindful engagement before financial decisions.
+The "Impulse Buy Blocker Game" challenges players to guess a hidden mathematical equation equaling a target number within six attempts. After completing a puzzle, users may access their wallet, promoting mindful engagement before financial decisions. A key feature includes awarding a custom-built Mathler achievement NFT to users upon their first successful puzzle completion.
 
 ## Core Features
 
@@ -16,7 +16,7 @@ This "Impulse Buy Blocker Game" challenges players to guess a hidden mathematica
 - Authoritative server-side game logic (puzzle generation, guess validation, tile coloring).
 - User metadata persistence (`hasEverSolvedAMathler`, `totalWins`, NFT flags) via Dynamic SDK.
 - **First Win NFT:** Users receive an ERC721 token on the Base Sepolia testnet for their first victory, with the transaction hash displayed for verification.
-- Optional "Bypass Puzzle" and game reset functionalities.
+- Optional "Bypass Puzzle" and game reset metadata history functionalities.
 
 ## Architecture & Logic Flow
 
@@ -36,7 +36,7 @@ Subsequent wins do not re-trigger this minting process.
 
 ## NFT Infrastructure: Smart Contract, Deployment & Service
 
-The "First Win NFT" is powered by a custom ERC721 smart contract and server-side logic for minting.
+The "First Win NFT" is powered by a simple ERC721 smart contract and server-side logic for minting.
 
 - **Smart Contract (`SimpleMathlerSharedUriNft.sol`):**
 
