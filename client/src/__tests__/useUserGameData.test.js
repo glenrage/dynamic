@@ -193,9 +193,10 @@ describe('useUserGameData', () => {
           }),
         })
       );
-      expect(alertSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Congratulations! Your First Win NFT')
-      );
+
+      // Check that lastNftMint state was updated in the hook
+      expect(result.current.lastNftMint.txHash).toBe('0xTestTxHash');
+      expect(result.current.lastNftMint.tokenId).toBe('123');
 
       // Second call to updateUser to set hasReceivedFirstWinNft
       expect(mockUpdateUserFn).toHaveBeenCalledTimes(2); // Total calls
@@ -262,12 +263,6 @@ describe('useUserGameData', () => {
       expect(clearedMetadataPayload.firstWinNftAwardedOrAttempted).toBe(true);
       expect(clearedMetadataPayload.hasReceivedFirstWinNft).toBe(true);
       expect(clearedMetadataPayload.anotherCustomField).toBe('preserve_me');
-
-      expect(alertSpy).toHaveBeenCalledWith(
-        expect.stringContaining(
-          'Mathler game progress reset. NFT achievement data preserved. Refresh if needed.'
-        )
-      );
     });
   });
 });

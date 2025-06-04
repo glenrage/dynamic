@@ -1,4 +1,4 @@
-# Impulse Buy Blocker Game - Dynamic Take-Home Assignment
+# Impulse Buy Blocker Game
 
 **Play the Game:** [https://dynamic-iki7.vercel.app/](https://dynamic-iki7.vercel.app/)
 
