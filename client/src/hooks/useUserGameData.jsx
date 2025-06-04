@@ -77,7 +77,10 @@ export const useUserGameData = () => {
               const finalMetadataAfterNft = {
                 ...metadataToUpdate,
                 hasReceivedFirstWinNft: true,
+                firstWinNftTransactionHash: mintData.transactionHash,
+                firstWinNftTokenId: mintData.tokenId,
               };
+
               try {
                 await updateUser({ metadata: finalMetadataAfterNft });
               } catch (receiptUpdateError) {
