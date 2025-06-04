@@ -3,23 +3,7 @@ import {
   useDynamicContext,
   useUserUpdateRequest,
 } from '@dynamic-labs/sdk-react-core';
-
-const getApiBaseUrl = () => {
-  if (typeof process !== 'undefined' && process.env) {
-    if (process.env.NODE_ENV === 'test' && process.env.JEST_MOCK_API_URL) {
-      return process.env.JEST_MOCK_API_URL;
-    }
-    if (process.env.VITE_BACKEND_API_URL) {
-      return process.env.VITE_BACKEND_API_URL;
-    }
-  }
-  console.warn(
-    'API URL not configured, using default: http://localhost:3001/api'
-  );
-  return 'http://localhost:3001/api';
-};
-
-const API_BASE_URL = getApiBaseUrl();
+import { mintNft } from '../services/api';
 
 export const useUserGameData = () => {
   const { user, primaryWallet } = useDynamicContext();
@@ -77,24 +61,14 @@ export const useUserGameData = () => {
 
         if (isWin && !hasAlreadyReceivedNft) {
           try {
-            const mintResponse = await fetch(
-              `${API_BASE_URL}/feature/mint-first-win-nft`,
-              {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  userWalletAddress: primaryWallet.address,
-                  userId: user.userId,
-                }),
-              }
+            const mintResponse = await mintNft(
+              primaryWallet.address,
+              user.userId
             );
+
             const mintData = await mintResponse.json();
 
-            if (
-              mintResponse.ok &&
-              mintData.success &&
-              mintData.transactionHash
-            ) {
+            if (mintData.success && mintData.transactionHash) {
               setLastNftMint({
                 txHash: mintData.transactionHash,
                 tokenId: mintData.tokenId || 'N/A',
@@ -159,6 +133,10 @@ export const useUserGameData = () => {
 
     try {
       const result = await updateUser({ metadata: clearedMetadataPayload });
+
+      alert(
+        'Mathler game progress has been reset for testing. Refresh may be needed.'
+      );
       return { success: true, data: result };
     } catch (e) {
       console.error('useUserGameData: Error clearing metadata:', e);
